@@ -42,7 +42,7 @@ class SlackBot:
             while True:
                 data = self._client.rtm_read()
                 print(data)
-                time.sleep(1)
+                time.sleep(self._option.wait)
         else:
             self._logger.error('Connects to the RTM WebSocket: Failed')
 
@@ -72,6 +72,15 @@ def _slackbot_option_parser(
                 action= _LogLevelAction,
                 choices= ('debug', 'info', 'warning', 'error', 'critical'),
                 help= 'set the threshold for the logger')
+    # Wait Time
+    parser.add_argument(
+                '--wait',
+                dest= 'wait',
+                metavar= 'SECONDS',
+                type= float,
+                default= 1.0,
+                help= ('set seconds between reading from'
+                       'Real Time Messaging WebSocket stream'))
     return parser
 
 class _LogLevelAction(argparse.Action):
