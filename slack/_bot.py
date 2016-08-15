@@ -7,7 +7,7 @@ import pprint
 import time
 from typing import Optional
 from slackclient import SlackClient
-from ._api import Member, MemberList
+from ._api import Channel, Member, MemberList
 
 class SlackBot:
     def __init__(
@@ -65,6 +65,24 @@ class SlackBot:
                     for member_data in data['members']
                     if not member_data['deleted']))
         self._logger.debug('\n{0}'.format(self._member_list.dump()))
+    
+    def update_channel_list(self):
+        self._logger.info('call API \"channels.list\"')
+        data = self._client.api_call('channels.list')
+        self._logger.debug(
+                    'call API \"channels.list\": Result\n{0}'
+                    .format(pprint.pformat(data, indent= 2)))
+        if not data.get('ok'):
+            self._logger.error(
+                        'call API \"channels.list\": Error \"{0}\"'
+                        .format(data.get('error')))
+            return
+        channel_list = [
+                    Channel(channel_data, self._member_list)
+                    for channel_data in data['channels']
+                    if not channel_data['is_archived']]
+        for channel in channel_list:
+            print(channel.dump())
 
 def _create_option_parser() -> argparse.ArgumentParser:
     root_parser = argparse.ArgumentParser(
