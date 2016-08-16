@@ -51,15 +51,8 @@ class SlackBot:
             self._logger.error('Connects to the RTM WebSocket: Failed')
     
     def update_member_list(self):
-        self._logger.info('call API \"users.list\"')
-        data = self._client.api_call('users.list')
-        self._logger.debug(
-                    'call API \"users.list\": Result\n{0}'
-                    .format(pprint.pformat(data, indent= 2)))
-        if not data.get('ok'):
-            self._logger.error(
-                        'call API \"users.list\": Error \"{0}\"'
-                        .format(data.get('error')))
+        data = _api_call(self, 'users.list')
+        if data is None:
             return
         self._member_list = MemberList(tuple(
                     Member(member_data)
@@ -68,21 +61,35 @@ class SlackBot:
         self._logger.debug('\n{0}'.format(self._member_list.dump()))
     
     def update_channel_list(self):
-        self._logger.info('call API \"channels.list\"')
-        data = self._client.api_call('channels.list')
-        self._logger.debug(
-                    'call API \"channels.list\": Result\n{0}'
-                    .format(pprint.pformat(data, indent= 2)))
-        if not data.get('ok'):
-            self._logger.error(
-                        'call API \"channels.list\": Error \"{0}\"'
-                        .format(data.get('error')))
+        data = _api_call(self, 'channels.list')
+        if data is None:
             return
         self._channel_list = ChannelList(tuple(
                     Channel(channel_data, self._member_list)
                     for channel_data in data['channels']
                     if not channel_data['is_archived']))
         self._logger.debug('\n{0}'.format(self._channel_list.dump()))
+
+def _api_call(
+            self: SlackBot,
+            method: str,
+            **kwargs) -> Optional[dict]:
+    self._logger.info('call API \"{0}\"'.format(method))
+    if len(kwargs) != 0:
+        self._logger.debug('Argument\n{0}'.format(
+                    pprint.pformat(kwargs, indent= 2)))
+    data = self._client.api_call(method, **kwargs)
+    self._logger.debug('call API \"{0}\": Result\n{1}'.format(
+                method,
+                pprint.pformat(data, indent= 2)))
+    if not data.get('ok'):
+        self._logger.error('call API \"{0}\": Error \"{1}\"'.format(
+                    method,
+                    data.get('error')))
+        return None
+    else:
+        return data
+
 
 def _create_option_parser() -> argparse.ArgumentParser:
     root_parser = argparse.ArgumentParser(
