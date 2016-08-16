@@ -94,3 +94,40 @@ class Channel:
                         '        by {0.topic_creator} at {0.topic_set}'
                         .format(self))
         return '\n'.join(str_list)
+
+class ChannelList(Iterable[Channel]):
+    def __init__(
+                self,
+                channel_list: Tuple[Channel] = None) -> None:
+        self._list = channel_list if channel_list is not None else ()
+        # type: Tuple[Channel]
+    
+    def __iter__(self) -> Iterator[Channel]:
+        return self._list.__iter__()
+    
+    def __getitem__(self, key: int) -> Channel:
+        return self._list.__getitem__(key)
+    
+    def dump(self) -> str:
+        str_list = []
+        str_list.append('ChannelList')
+        str_list.extend(
+                    '    {0:03d}: {1}'.format(
+                            i,
+                            '\n    '.join(channel.dump().split('\n')))
+                    for i, channel in enumerate(self))
+        return '\n'.join(str_list)
+    
+    def id_search(self, channel_id: str) -> Optional[Channel]:
+        for channel in self:
+            if channel.id == hannel_id:
+                return channel
+        else:
+            return None
+    
+    def name_search(self, name: str) -> Optional[Channel]:
+        for channel in self:
+            if channel.name == name:
+                return channel
+        else:
+            return None

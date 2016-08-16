@@ -7,7 +7,7 @@ import pprint
 import time
 from typing import Optional
 from slackclient import SlackClient
-from ._api import Channel, Member, MemberList
+from ._api import Channel, ChannelList, Member, MemberList
 
 class SlackBot:
     def __init__(
@@ -38,6 +38,7 @@ class SlackBot:
         # Client
         self._client = SlackClient(self._token)
         self._member_list = MemberList()
+        self._channel_list = ChannelList()
     
     def run(self) -> None:
         if self._client.rtm_connect():
@@ -77,12 +78,11 @@ class SlackBot:
                         'call API \"channels.list\": Error \"{0}\"'
                         .format(data.get('error')))
             return
-        channel_list = [
+        self._channel_list = ChannelList(tuple(
                     Channel(channel_data, self._member_list)
                     for channel_data in data['channels']
-                    if not channel_data['is_archived']]
-        for channel in channel_list:
-            print(channel.dump())
+                    if not channel_data['is_archived']))
+        self._logger.debug('\n{0}'.format(self._channel_list.dump()))
 
 def _create_option_parser() -> argparse.ArgumentParser:
     root_parser = argparse.ArgumentParser(
