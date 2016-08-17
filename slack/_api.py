@@ -120,7 +120,7 @@ class ChannelList(Iterable[Channel]):
     
     def id_search(self, channel_id: str) -> Optional[Channel]:
         for channel in self:
-            if channel.id == hannel_id:
+            if channel.id == channel_id:
                 return channel
         else:
             return None
@@ -136,14 +136,26 @@ class Team:
     def __init__(
                 self,
                 id: str,
-                name: str) -> None:
+                name: str,
+                member_list: MemberList,
+                channel_list: ChannelList) -> None:
         self._id = id
         self._name = name
+        self._member_list = member_list
+        self._channel_list = channel_list
     
     @property
-    def id(self):
+    def id(self) -> str:
         return self._id
     
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
+    
+    @property
+    def member_list(self) -> MemberList:
+        return self._member_list
+    
+    @property
+    def channel_list(self) -> ChannelList:
+        return self._channel_list

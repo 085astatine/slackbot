@@ -37,11 +37,11 @@ class SlackBot:
             self._logger.debug('load token: Success')
         # Client
         self._client = slackclient.SlackClient(self._token)
+        # Team
         self._team = None # type: Team
-        self._member_list = MemberList()
-        self._channel_list = ChannelList()
     
     def run(self) -> None:
+        self.update_team()
         if self._client.rtm_connect():
             self._logger.info('Connects to the RTM Websocket: Success')
             while True:
@@ -52,35 +52,37 @@ class SlackBot:
             self._logger.error('Connects to the RTM WebSocket: Failed')
     
     def update_team(self) -> None:
-        team_info = _api_call(self, 'team.info')
-        if team_info is None:
+        # API: team.info
+        api_team_info = _api_call(self, 'team.info')
+        if api_team_info is None:
             return
-        team_id = team_info['team']['id']
-        team_name = team_info['team']['name']
+        team_id = api_team_info['team']['id']
+        team_name = api_team_info['team']['name']
         self._logger.debug('Team \"{0}\" (id: {1})'.format(team_name, team_id))
+        # API: users.list
+        api_users_list = _api_call(self, 'users.list')
+        if api_users_list is None:
+            return
+        member_list = MemberList(tuple(
+                    Member(member_data)
+                    for member_data in api_users_list['members']
+                    if not member_data['deleted']))
+        self._logger.debug('\n{0}'.format(member_list.dump()))
+        # API: channels.list
+        api_channels_list = _api_call(self, 'channels.list')
+        if api_channels_list is None:
+            return
+        channel_list = ChannelList(tuple(
+                    Channel(channel_data, member_list)
+                    for channel_data in api_channels_list['channels']
+                    if not channel_data['is_archived']))
+        self._logger.debug('\n{0}'.format(channel_list.dump()))
+        # update Team
         self._team = Team(
                     team_id,
-                    team_name)
-    
-    def update_member_list(self):
-        data = _api_call(self, 'users.list')
-        if data is None:
-            return
-        self._member_list = MemberList(tuple(
-                    Member(member_data)
-                    for member_data in data['members']
-                    if not member_data['deleted']))
-        self._logger.debug('\n{0}'.format(self._member_list.dump()))
-    
-    def update_channel_list(self):
-        data = _api_call(self, 'channels.list')
-        if data is None:
-            return
-        self._channel_list = ChannelList(tuple(
-                    Channel(channel_data, self._member_list)
-                    for channel_data in data['channels']
-                    if not channel_data['is_archived']))
-        self._logger.debug('\n{0}'.format(self._channel_list.dump()))
+                    team_name,
+                    member_list,
+                    channel_list)
 
 def _api_call(
             self: SlackBot,
