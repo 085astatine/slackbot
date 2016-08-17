@@ -7,7 +7,7 @@ import pprint
 import time
 from typing import Optional
 import slackclient
-from ._api import Team, Channel, ChannelList, Member, MemberList
+from ._team import Team, Channel, ChannelList, Member, MemberList
 
 class SlackBot:
     def __init__(
