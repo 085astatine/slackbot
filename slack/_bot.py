@@ -6,7 +6,7 @@ import pathlib
 import pprint
 import time
 from typing import Optional
-from slackclient import SlackClient
+import slackclient
 from ._api import Channel, ChannelList, Member, MemberList
 
 class SlackBot:
@@ -36,7 +36,7 @@ class SlackBot:
         else:
             self._logger.debug('load token: Success')
         # Client
-        self._client = SlackClient(self._token)
+        self._client = slackclient.SlackClient(self._token)
         self._member_list = MemberList()
         self._channel_list = ChannelList()
     
