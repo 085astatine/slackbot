@@ -20,9 +20,8 @@ class Member:
 class MemberList(Iterable[Member]):
     def __init__(
                 self,
-                member_list: Tuple[Member] = None) -> None:
-        self._list = member_list if member_list is not None else ()
-        # type: Tuple[Member]
+                member_list: Tuple[Member, ...]) -> None:
+        self._list = member_list
     
     def __iter__(self) -> Iterator[Member]:
         return self._list.__iter__()
@@ -38,9 +37,9 @@ class MemberList(Iterable[Member]):
                     for i, member in enumerate(self))
         return '\n'.join(str_list)
     
-    def id_search(self, member_id: str) -> Optional[Member]:
+    def id_search(self, id: str) -> Optional[Member]:
         for member in self:
-            if member.id == member_id:
+            if member.id == id:
                 return member
         else:
             return None
@@ -81,26 +80,23 @@ class Channel:
         str_list.append('    creator: {0}'.format(self.creator))
         str_list.append('    created: {0}'.format(self.created))
         str_list.append('    members:')
-        str_list.extend('        {0:3d}, {1}'.format(i, member)
+        str_list.extend('        {0:03d}, {1}'.format(i, member)
                         for i, member in enumerate(self.members))
         str_list.append('    purpose: {0}'.format(self.purpose))
         if self.purpose:
-            str_list.append(
-                        '        by {0.purpose_creator} at {0.purpose_set}'
-                        .format(self))
+            str_list.append('        by: {0.purpose_creator}' .format(self))
+            str_list.append('        at: {0.purpose_set}'.format(self))
         str_list.append('    topic: {0}'.format(self.topic))
         if self.topic:
-            str_list.append(
-                        '        by {0.topic_creator} at {0.topic_set}'
-                        .format(self))
+            str_list.append('        by: {0.topic_creator}'.format(self))
+            str_list.append('        at: {0.topic_set}'.format(self))
         return '\n'.join(str_list)
 
 class ChannelList(Iterable[Channel]):
     def __init__(
                 self,
-                channel_list: Tuple[Channel] = None) -> None:
-        self._list = channel_list if channel_list is not None else ()
-        # type: Tuple[Channel]
+                channel_list: Tuple[Channel, ...]) -> None:
+        self._list = channel_list
     
     def __iter__(self) -> Iterator[Channel]:
         return self._list.__iter__()
@@ -118,9 +114,9 @@ class ChannelList(Iterable[Channel]):
                     for i, channel in enumerate(self))
         return '\n'.join(str_list)
     
-    def id_search(self, channel_id: str) -> Optional[Channel]:
+    def id_search(self, id: str) -> Optional[Channel]:
         for channel in self:
-            if channel.id == channel_id:
+            if channel.id == id:
                 return channel
         else:
             return None
