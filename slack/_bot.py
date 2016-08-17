@@ -7,7 +7,7 @@ import pprint
 import time
 from typing import Optional
 import slackclient
-from ._api import Channel, ChannelList, Member, MemberList
+from ._api import Team, Channel, ChannelList, Member, MemberList
 
 class SlackBot:
     def __init__(
@@ -37,6 +37,7 @@ class SlackBot:
             self._logger.debug('load token: Success')
         # Client
         self._client = slackclient.SlackClient(self._token)
+        self._team = None # type: Team
         self._member_list = MemberList()
         self._channel_list = ChannelList()
     
@@ -49,6 +50,17 @@ class SlackBot:
                 time.sleep(self._option.wait)
         else:
             self._logger.error('Connects to the RTM WebSocket: Failed')
+    
+    def update_team(self) -> None:
+        team_info = _api_call(self, 'team.info')
+        if team_info is None:
+            return
+        team_id = team_info['team']['id']
+        team_name = team_info['team']['name']
+        self._logger.debug('Team \"{0}\" (id: {1})'.format(team_name, team_id))
+        self._team = Team(
+                    team_id,
+                    team_name)
     
     def update_member_list(self):
         data = _api_call(self, 'users.list')
