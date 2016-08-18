@@ -134,11 +134,13 @@ class Team:
                 id: str,
                 name: str,
                 member_list: MemberList,
-                channel_list: ChannelList) -> None:
+                channel_list: ChannelList,
+                user_id: str) -> None:
         self._id = id
         self._name = name
         self._member_list = member_list
         self._channel_list = channel_list
+        self._user = self._member_list.id_search(user_id)
     
     @property
     def id(self) -> str:
@@ -155,3 +157,7 @@ class Team:
     @property
     def channel_list(self) -> ChannelList:
         return self._channel_list
+    
+    @property
+    def user(self) -> Member:
+        return self._user

@@ -52,12 +52,13 @@ class SlackBot:
             self._logger.error('Connects to the RTM WebSocket: Failed')
     
     def update_team(self) -> None:
-        # API: team.info
-        api_team_info = _api_call(self, 'team.info')
-        if api_team_info is None:
+        # API: auth.test
+        api_auth_test = _api_call(self, 'auth.test')
+        if api_auth_test is None:
             return
-        team_id = api_team_info['team']['id']
-        team_name = api_team_info['team']['name']
+        team_id = api_auth_test['team_id']
+        team_name = api_auth_test['team']
+        user_id = api_auth_test['user_id']
         self._logger.debug('Team \"{0}\" (id: {1})'.format(team_name, team_id))
         # API: users.list
         api_users_list = _api_call(self, 'users.list')
@@ -82,7 +83,8 @@ class SlackBot:
                     team_id,
                     team_name,
                     member_list,
-                    channel_list)
+                    channel_list,
+                    user_id)
 
 def _api_call(
             self: SlackBot,
