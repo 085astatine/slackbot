@@ -5,7 +5,7 @@ import logging
 import pathlib
 import pprint
 import time
-from typing import Optional
+from typing import List, Optional, Union
 import slackclient
 from ._team import Team, Channel, ChannelList, Member, MemberList
 
@@ -86,8 +86,41 @@ class SlackBot:
                     channel_list,
                     user_id)
 
+class SlackBotAction:
+    def __init__(
+                self,
+                logger: logging.Logger) -> None:
+        self._logger = logger
+        self._client = None # type: slackclient._client.SlackClient
+        self._team = None # type: Team
+
+    def action(self, api_list: List[dict]) -> None:
+        pass
+    
+    def _api_call(
+                self,
+                method: str,
+                **kwargs) -> Optional[dict]:
+        return _api_call(self, **kwargs)
+    
+    def set_client(
+                self,
+                client: slackclient._client.SlackClient) -> None:
+        self._client = client
+    
+    def set_team(
+                self,
+                team: Team) -> None:
+        self._team = team
+    
+    @staticmethod
+    def option_parser(
+                root_parser: argparse.ArgumentParser) \
+                -> argparse.ArgumentParser:
+        return root_parser
+
 def _api_call(
-            self: SlackBot,
+            self: Union[SlackBot, SlackBotAction],
             method: str,
             **kwargs) -> Optional[dict]:
     self._logger.info('call API \"{0}\"'.format(method))
