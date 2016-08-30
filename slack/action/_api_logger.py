@@ -4,7 +4,7 @@ import argparse
 import logging
 import pprint
 from typing import List
-from .._bot import SlackBotAction
+from .._bot import SlackBotAction, _LogLevelAction
 
 class APILogger(SlackBotAction):
     def __init__(
@@ -21,4 +21,13 @@ class APILogger(SlackBotAction):
     def option_parser(
                 root_parser: argparse.ArgumentParser) \
                 -> argparse.ArgumentParser:
+        parser = root_parser.add_argument_group(
+                    title= 'APILogger Options')
+        # Log Level
+        parser.add_argument(
+                    '--APILogger-log-level',
+                    dest= 'log_level',
+                    action= _LogLevelAction,
+                    choices= ('debug', 'info', 'warning', 'error', 'critical'),
+                    help= 'set the threshold for the logger')
         return root_parser
