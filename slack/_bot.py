@@ -5,24 +5,36 @@ import logging
 import pathlib
 import pprint
 import time
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 import slackclient
 from ._team import Team, Channel, ChannelList, Member, MemberList
 
 class SlackBot:
     def __init__(
                 self,
+                action_list: Dict[str, type] = None,
                 option: argparse.Namespace = None,
                 logger: logging.Logger = None) -> None:
+        if action_list is None:
+            action_list = {}
         # option
         if option is None:
-            option = _create_option_parser().parse_args()
+            option = _create_option_parser(action_list).parse_args()
         self._option = option
         # logger
         self._logger = (
                     logger
                     if logger is not None
                     else logging.getLogger(__name__))
+        # Action List
+        self._action_list = {}# type: Dict[str, SlackBotAction]
+        for key, action in action_list.items():
+            self._action_list[key] = action(
+                        logger= self._logger.getChild(key),
+                        option= self._option)
+        assert all(isinstance(action, SlackBotAction)
+                    for action in self._action_list.values())
+        # set LogLevel
         if self._option.log_level is not None:
             self._logger.setLevel(
                             self._option.log_level)
@@ -47,6 +59,8 @@ class SlackBot:
             while True:
                 data = self._client.rtm_read()
                 print(data)
+                for action in self._action_list.values():
+                    action.action(data)
                 time.sleep(self._option.wait)
         else:
             self._logger.error('Connects to the RTM WebSocket: Failed')
@@ -85,6 +99,9 @@ class SlackBot:
                     member_list,
                     channel_list,
                     user_id)
+    
+    def get_action(self, key: str) -> Optional['SlackBotAction']:
+        return self._action_list.get(key, None)
 
 class SlackBotAction:
     def __init__(
@@ -140,11 +157,15 @@ def _api_call(
         return data
 
 
-def _create_option_parser() -> argparse.ArgumentParser:
+def _create_option_parser(
+            action_list: Dict[str, type]) -> argparse.ArgumentParser:
     root_parser = argparse.ArgumentParser(
                 description= 'SlackBot')
     # SlackBot option
     _slackbot_option_parser(root_parser)
+    # Action List
+    for key in sorted(action_list.keys()):
+        action_list[key].option_parser(root_parser)
     return root_parser
 
 def _slackbot_option_parser(
