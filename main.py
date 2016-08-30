@@ -2,6 +2,7 @@
 
 import logging
 import slack
+import slack.action
 
 if __name__ == '__main__':
     # logger
@@ -12,5 +13,8 @@ if __name__ == '__main__':
                 fmt= '%(name)s::%(levelname)s::%(message)s')
     logger.addHandler(handler)
     slack_bot = slack.SlackBot(
+                action_list= {
+                    'APILogger': slack.action.APILogger,
+                    },
                 logger= logger)
     slack_bot.run()

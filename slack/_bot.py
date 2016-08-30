@@ -58,7 +58,6 @@ class SlackBot:
             self._logger.info('Connects to the RTM Websocket: Success')
             while True:
                 data = self._client.rtm_read()
-                print(data)
                 for action in self._action_list.values():
                     action.action(data)
                 time.sleep(self._option.wait)
