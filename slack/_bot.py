@@ -131,6 +131,7 @@ class SlackBotAction:
     
     @staticmethod
     def option_parser(
+                name: str,
                 root_parser: argparse.ArgumentParser) \
                 -> argparse.ArgumentParser:
         return root_parser
@@ -164,7 +165,7 @@ def _create_option_parser(
     _slackbot_option_parser(root_parser)
     # Action List
     for key in sorted(action_list.keys()):
-        action_list[key].option_parser(root_parser)
+        action_list[key].option_parser(key, root_parser)
     return root_parser
 
 def _slackbot_option_parser(

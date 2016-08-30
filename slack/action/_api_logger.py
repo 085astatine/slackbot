@@ -19,13 +19,14 @@ class APILogger(SlackBotAction):
     
     @staticmethod
     def option_parser(
+                name: str,
                 root_parser: argparse.ArgumentParser) \
                 -> argparse.ArgumentParser:
         parser = root_parser.add_argument_group(
-                    title= 'APILogger Options')
+                    title= '{0} Options'.format(name))
         # Log Level
         parser.add_argument(
-                    '--APILogger-log-level',
+                    '--{0}-log-level'.format(name),
                     dest= 'log_level',
                     action= _LogLevelAction,
                     choices= ('debug', 'info', 'warning', 'error', 'critical'),
