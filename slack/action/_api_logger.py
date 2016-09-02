@@ -29,6 +29,6 @@ class APILogger(SlackBotAction):
                     '--{0}-log-level'.format(name),
                     dest= 'log_level',
                     action= _LogLevelAction,
-                    choices= ('debug', 'info', 'warning', 'error', 'critical'),
+                    choices= _LogLevelAction.choices(),
                     help= 'set the threshold for the logger')
         return root_parser

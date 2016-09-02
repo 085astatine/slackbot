@@ -5,7 +5,7 @@ import logging
 import pathlib
 import pprint
 import time
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 import slackclient
 from ._team import Team, Channel, ChannelList, Member, MemberList
 
@@ -185,7 +185,7 @@ def _slackbot_option_parser(
                 '--log-level',
                 dest= 'log_level',
                 action= _LogLevelAction,
-                choices= ('debug', 'info', 'warning', 'error', 'critical'),
+                choices= _LogLevelAction.choices(),
                 help= 'set the threshold for the logger')
     # Wait Time
     parser.add_argument(
@@ -206,6 +206,10 @@ class _LogLevelAction(argparse.Action):
                 value: str,
                 option_string: str = None) -> None:
         setattr(namespace, self.dest, getattr(logging, value.upper()))
+    
+    @staticmethod
+    def choices() -> Tuple[str, ...]:
+        return ('debug', 'info', 'warning', 'error', 'critical')
 
 def _load_token(
             token_file: pathlib.Path,
