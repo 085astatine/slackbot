@@ -30,6 +30,7 @@ class SlackBot:
         self._action_list = {}# type: Dict[str, SlackBotAction]
         for key, action in action_list.items():
             self._action_list[key] = action(
+                        key,
                         logger= self._logger.getChild(key),
                         option= self._option)
         assert all(isinstance(action, SlackBotAction)
@@ -105,11 +106,17 @@ class SlackBot:
 class SlackBotAction:
     def __init__(
                 self,
+                name: str,
                 logger: logging.Logger) -> None:
         self._logger = logger
+        self._name = name
         self._client = None # type: slackclient._client.SlackClient
         self._team = None # type: Team
-
+    
+    @property
+    def name(self) -> str:
+        return self._name
+    
     def action(self, api_list: List[dict]) -> None:
         pass
     

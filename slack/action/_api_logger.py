@@ -9,9 +9,10 @@ from .._bot import SlackBotAction, _LogLevelAction
 class APILogger(SlackBotAction):
     def __init__(
                 self,
+                name: str,
                 logger: logging.Logger,
                 option: argparse.ArgumentParser) -> None:
-        SlackBotAction.__init__(self, logger)
+        SlackBotAction.__init__(self, name, logger)
     
     def action(self, api_list: List[dict]) -> None:
         self._logger.debug('\n{0}'.format(
