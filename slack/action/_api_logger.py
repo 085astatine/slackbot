@@ -13,6 +13,10 @@ class APILogger(SlackBotAction):
                 logger: logging.Logger,
                 option: argparse.ArgumentParser) -> None:
         SlackBotAction.__init__(self, name, logger)
+        # set Log Level
+        log_level = getattr(option, '{0}.log_level'.format(self.name))
+        if log_level is not None:
+            self._logger.setLevel(log_level)
     
     def action(self, api_list: List[dict]) -> None:
         self._logger.debug('\n{0}'.format(
@@ -28,7 +32,7 @@ class APILogger(SlackBotAction):
         # Log Level
         parser.add_argument(
                     '--{0}-log-level'.format(name),
-                    dest= 'log_level',
+                    dest= '{0}.log_level'.format(name),
                     action= _LogLevelAction,
                     choices= _LogLevelAction.choices(),
                     help= 'set the threshold for the logger')
