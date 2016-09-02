@@ -5,7 +5,7 @@ import logging
 import pathlib
 import pprint
 import time
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 import slackclient
 from ._team import Team, Channel, ChannelList, Member, MemberList
 
@@ -30,6 +30,7 @@ class SlackBot:
         self._action_list = {}# type: Dict[str, SlackBotAction]
         for key, action in action_list.items():
             self._action_list[key] = action(
+                        key,
                         logger= self._logger.getChild(key),
                         option= self._option)
         assert all(isinstance(action, SlackBotAction)
@@ -58,7 +59,6 @@ class SlackBot:
             self._logger.info('Connects to the RTM Websocket: Success')
             while True:
                 data = self._client.rtm_read()
-                print(data)
                 for action in self._action_list.values():
                     action.action(data)
                 time.sleep(self._option.wait)
@@ -106,11 +106,17 @@ class SlackBot:
 class SlackBotAction:
     def __init__(
                 self,
+                name: str,
                 logger: logging.Logger) -> None:
         self._logger = logger
+        self._name = name
         self._client = None # type: slackclient._client.SlackClient
         self._team = None # type: Team
-
+    
+    @property
+    def name(self) -> str:
+        return self._name
+    
     def action(self, api_list: List[dict]) -> None:
         pass
     
@@ -132,6 +138,7 @@ class SlackBotAction:
     
     @staticmethod
     def option_parser(
+                name: str,
                 root_parser: argparse.ArgumentParser) \
                 -> argparse.ArgumentParser:
         return root_parser
@@ -165,7 +172,7 @@ def _create_option_parser(
     _slackbot_option_parser(root_parser)
     # Action List
     for key in sorted(action_list.keys()):
-        action_list[key].option_parser(root_parser)
+        action_list[key].option_parser(key, root_parser)
     return root_parser
 
 def _slackbot_option_parser(
@@ -185,7 +192,7 @@ def _slackbot_option_parser(
                 '--log-level',
                 dest= 'log_level',
                 action= _LogLevelAction,
-                choices= ('debug', 'info', 'warning', 'error', 'critical'),
+                choices= _LogLevelAction.choices(),
                 help= 'set the threshold for the logger')
     # Wait Time
     parser.add_argument(
@@ -206,6 +213,10 @@ class _LogLevelAction(argparse.Action):
                 value: str,
                 option_string: str = None) -> None:
         setattr(namespace, self.dest, getattr(logging, value.upper()))
+    
+    @staticmethod
+    def choices() -> Tuple[str, ...]:
+        return ('debug', 'info', 'warning', 'error', 'critical')
 
 def _load_token(
             token_file: pathlib.Path,
