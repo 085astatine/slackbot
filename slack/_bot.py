@@ -50,6 +50,8 @@ class SlackBot:
             self._logger.debug('load token: Success')
         # Client
         self._client = slackclient.SlackClient(self._token)
+        for action in self._action_list.values():
+            action.set_client(self._client)
         # Team
         self._team = None # type: Team
     
