@@ -128,7 +128,7 @@ class SlackBotAction:
                 self,
                 method: str,
                 **kwargs) -> Optional[dict]:
-        return _api_call(self, **kwargs)
+        return _api_call(self, method, **kwargs)
     
     def set_client(
                 self,
