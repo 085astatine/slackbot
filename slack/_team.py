@@ -15,7 +15,7 @@ class Member:
         if self.is_bot:
             str_list.append('(Bot)')
         str_list.append('(id: {0.id})'.format(self))
-        return ' '.join(str_list)
+        return ''.join(str_list)
 
 class MemberList(Iterable[Member]):
     def __init__(
@@ -75,7 +75,7 @@ class Channel:
                     data['topic']['last_set'])
     
     def __str__(self) -> str:
-        return '{0.name} (id: {0.id})'.format(self)
+        return '{0.name}(id: {0.id})'.format(self)
     
     def dump(self) -> str:
         str_list = [] # type: List[str]
