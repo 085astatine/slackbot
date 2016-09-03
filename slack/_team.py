@@ -74,6 +74,9 @@ class Channel:
         self.topic_set = datetime.datetime.fromtimestamp(
                     data['topic']['last_set'])
     
+    def __str__(self) -> str:
+        return '{0.name} (id: {0.id})'.format(self)
+    
     def dump(self) -> str:
         str_list = [] # type: List[str]
         str_list.append('Channel \"{0.name}\" (id: {0.id})'.format(self))
