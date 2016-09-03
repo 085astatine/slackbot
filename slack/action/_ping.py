@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import re
 from typing import List
 from .._bot import SlackBotAction, _LogLevelAction
 
@@ -60,7 +61,12 @@ def _is_target(
             self: Ping,
             api: dict) -> bool:
     if api.get('type') == 'message':
-        if api.get('text') == self._keyword_text:
+        pattern = r'(<@(?P<to>.+)> +|)(?P<text>.+)'
+        regex = re.match(pattern, api.get('text', ''))
+        if (regex is not None
+                and regex.group('text') == self._keyword_text
+                and (regex.group('to') is None
+                        or regex.group('to') == self._team.user.id)):
             return True
     return False
 
