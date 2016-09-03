@@ -15,6 +15,7 @@ if __name__ == '__main__':
     slack_bot = slack.SlackBot(
                 action_list= {
                     'APILogger': slack.action.APILogger,
+                    'Ping': slack.action.Ping,
                     },
                 logger= logger)
     slack_bot.run()
