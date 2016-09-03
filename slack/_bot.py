@@ -99,6 +99,8 @@ class SlackBot:
                     member_list,
                     channel_list,
                     user_id)
+        for action in self._action_list.values():
+            action.set_team(self._team)
     
     def get_action(self, key: str) -> Optional['SlackBotAction']:
         return self._action_list.get(key, None)
