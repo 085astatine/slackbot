@@ -17,8 +17,8 @@ class Ping(SlackBotAction):
         if log_level is not None:
             self._logger.setLevel(log_level)
         # Setting
-        self._target_text = 'ping'
-        self._reply_text = 'pong'
+        self._target_text = getattr(option, '{0}.target'.format(self.name))
+        self._reply_text = getattr(option, '{0}.reply'.format(self.name))
     
     def action(self, api_list: List[dict]) -> None:
         for api in api_list:
@@ -40,6 +40,20 @@ class Ping(SlackBotAction):
                     action= _LogLevelAction,
                     choices= _LogLevelAction.choices(),
                     help= 'set the threshold for the logger')
+        # Target text
+        parser.add_argument(
+                    '--{0}-target'.format(name),
+                    dest= '{0}.target'.format(name),
+                    default= 'ping',
+                    metavar= 'TEXT',
+                    help= 'set the keyword to reply. default keyword is ping')
+        # Replay text
+        parser.add_argument(
+                    '--{0}-reply'.format(name),
+                    dest= '{0}.reply'.format(name),
+                    default= 'pong',
+                    metavar= 'TEXT',
+                    help= 'set the reply message. default message is pong')
         return root_parser
 
 def _is_target(
