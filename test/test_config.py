@@ -114,6 +114,15 @@ class ConfigParserExitTest(unittest.TestCase):
         sys.stderr = self._stderr
         self._stderr = None
 
+    def test_unrecognized_argumets(self):
+        parser = slackbot.ConfigParser(
+                "Test",
+                (slackbot.Option('foo'), ))
+        data = {'foo': '0', 'bar': '1'}
+        with self.assertRaises(SystemExit) as cm:
+            retult = parser.parse(data)
+        self.assertEqual(cm.exception.code, 2)
+
     def test_required_failed(self):
         parser = slackbot.ConfigParser(
                 "Test",

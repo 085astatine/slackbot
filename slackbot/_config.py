@@ -81,6 +81,15 @@ class ConfigParser:
             except OptionError as e:
                 _sys.stderr.write(str(e))
                 is_error = True
+        else:  # check unrecognized arguments
+            unused_key_list = sorted(
+                        set(data.keys()).difference(
+                                option.name for option in self.option_list))
+            if len(unused_key_list) != 0:
+                is_error = True
+                _sys.stderr.write(
+                        "unrecognized arguments: {0}"
+                        .format(', '.join(map(repr, unused_key_list))))
         if is_error:
             _sys.exit(2)
         """convert: dict -> namedtuple('_', ...), list -> tuple"""
