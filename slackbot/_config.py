@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 
 
+import collections as _collections
+import sys as _sys
+
+
 class OptionError(Exception):
     def __init__(self, message):
         self.message = message
@@ -61,3 +65,37 @@ class Option:
         if self.action is not None:
             value = self.action(value)
         return value
+
+
+class ConfigParser:
+    def __init__(self, name, option_list):
+        self.name = name
+        self.option_list = option_list
+
+    def parse(self, data):
+        result = {}
+        is_error = False
+        for option in self.option_list:
+            try:
+                result[option.name] = option.evaluate(data)
+            except OptionError as e:
+                _sys.stderr.write(str(e))
+                is_error = True
+        if is_error:
+            _sys.exit(2)
+        """convert: dict -> namedtuple('_', ...), list -> tuple"""
+        def convert(value):
+            if isinstance(value, dict):
+                for key in value.keys():
+                    value[key] = convert(value[key])
+                return _collections.namedtuple('_', value.keys())(**value)
+            elif isinstance(value, list):
+                return tuple(convert(i) for i in value)
+            else:
+                return value
+        # convert each value of result
+        for key, value in result.items():
+            result[key] = convert(value)
+        return _collections.namedtuple(
+                    "{}Config".format(self.name),
+                    result.keys())(**result)
