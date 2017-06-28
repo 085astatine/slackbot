@@ -6,10 +6,15 @@ import slackbot
 
 
 class OptionTest(unittest.TestCase):
-    def test_default(self):
+    def test_plain(self):
         option = slackbot.Option('foo')
         data = {'foo': 'bar'}
         self.assertEqual(option.evaluate(data), 'bar')
+
+    def test_default(self):
+        option = slackbot.Option('foo', default=0)
+        data = {}
+        self.assertEqual(option.evaluate(data), 0)
 
     def test_type(self):
         option = slackbot.Option('foo', type=int)
