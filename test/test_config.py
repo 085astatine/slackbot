@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 
+import os
+import sys
 import unittest
 import slackbot
 
@@ -53,6 +55,82 @@ class OptionTest(unittest.TestCase):
         option = slackbot.Option('foo', action=str.upper)
         data = {'foo': 'bar'}
         self.assertEqual(option.evaluate(data), 'BAR')
+
+
+class ConfigParserTest(unittest.TestCase):
+    def test_plain(self):
+        parser = slackbot.ConfigParser(
+                "Test",
+                (slackbot.Option('foo'), slackbot.Option('bar')))
+        data = {'foo': '0', 'bar': '1'}
+        result = parser.parse(data)
+        self.assertEqual(result.foo, '0')
+        self.assertEqual(result.bar, '1')
+
+    def test_dict(self):
+        parser = slackbot.ConfigParser(
+                "Test",
+                (slackbot.Option('foo'), ))
+        data = {'foo': {'bar': '0', 'baz': '1'}}
+        result = parser.parse(data)
+        self.assertEqual(result.foo.bar, '0')
+        self.assertEqual(result.foo.baz, '1')
+
+    def test_list(self):
+        parser = slackbot.ConfigParser(
+                "Test",
+                (slackbot.Option('foo'), ))
+        data = {'foo': ['bar', 'baz']}
+        result = parser.parse(data)
+        self.assertEqual(result.foo[0], 'bar')
+        self.assertEqual(result.foo[1], 'baz')
+
+    def test_dict_in_list(self):
+        parser = slackbot.ConfigParser(
+                "Test",
+                (slackbot.Option('foo'), ))
+        data = {'foo': [{'bar': '0'}, {'baz': '1'}]}
+        result = parser.parse(data)
+        self.assertEqual(result.foo[0].bar, '0')
+        self.assertEqual(result.foo[1].baz, '1')
+
+    def test_list_in_dict(self):
+        parser = slackbot.ConfigParser(
+                "Test",
+                (slackbot.Option('foo'), ))
+        data = {'foo': {'bar': ['0', '1']}}
+        result = parser.parse(data)
+        self.assertEqual(result.foo.bar[0], '0')
+        self.assertEqual(result.foo.bar[1], '1')
+
+
+class ConfigParserExitTest(unittest.TestCase):
+    def setUp(self):
+        self._stderr = sys.stderr
+        sys.stderr = open(os.devnull, mode='w')
+
+    def tearDown(self):
+        sys.stderr.close()
+        sys.stderr = self._stderr
+        self._stderr = None
+
+    def test_required_failed(self):
+        parser = slackbot.ConfigParser(
+                "Test",
+                (slackbot.Option('foo', required=True), ))
+        data = {}
+        with self.assertRaises(SystemExit) as cm:
+            retult = parser.parse(data)
+        self.assertEqual(cm.exception.code, 2)
+
+    def test_choices_failed(self):
+        parser = slackbot.ConfigParser(
+                "Test",
+                (slackbot.Option('foo', choices=('bar', 'baz')), ))
+        data = {'foo': 'foo'}
+        with self.assertRaises(SystemExit) as cm:
+            retult = parser.parse(data)
+        self.assertEqual(cm.exception.code, 2)
 
 if __name__ == '__main__':
     unittest.main()
