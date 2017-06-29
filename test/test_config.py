@@ -62,6 +62,49 @@ class OptionTest(unittest.TestCase):
         self.assertEqual(option.evaluate(data), 'BAR')
 
 
+class OptionHelpTest(unittest.TestCase):
+    def test_plain(self):
+        option = slackbot.Option('foo')
+        self.assertEqual(
+                    option.help_message(),
+                    '(optional)')
+
+    def test_required(self):
+        option = slackbot.Option('foo', help='Foo', required=True)
+        self.assertEqual(
+                    option.help_message(),
+                    'Foo (required)')
+
+    def test_default(self):
+        option = slackbot.Option('foo', help='Foo', default='bar')
+        self.assertEqual(
+                    option.help_message(),
+                    'Foo (default: bar)(optional)')
+
+    def test_default_hidden(self):
+        option = slackbot.Option('foo', help='Foo', default=b'')
+        self.assertEqual(
+                    option.help_message(),
+                    'Foo (optional)')
+
+    def test_choices(self):
+        option = slackbot.Option('foo', help='Foo', choices=(0, 1))
+        self.assertEqual(
+                    option.help_message(),
+                    'Foo {0, 1}(optional)')
+
+    def test_all(self):
+        option = slackbot.Option(
+                    'foo',
+                    default='foo',
+                    choices=('foo', 'bar', 'baz'),
+                    required=True,
+                    help='Foo')
+        self.assertEqual(
+                    option.help_message(),
+                    'Foo {foo, bar, baz}(default: foo)(required)')
+
+
 class ConfigParserTest(unittest.TestCase):
     def test_plain(self):
         parser = slackbot.ConfigParser(
