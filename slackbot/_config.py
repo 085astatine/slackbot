@@ -59,7 +59,7 @@ class Option:
                     "argument '{0}':invalid choice: {1} (choose from {2})"
                     .format(self.name,
                             repr(value),
-                            ', '.join(repr(c) for c in self.choices)))
+                            ', '.join(map(repr, self.choices))))
                 raise OptionError(message)
         # action
         if self.action is not None:
