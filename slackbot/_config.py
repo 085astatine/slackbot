@@ -70,6 +70,17 @@ class Option:
             value = self.action(value)
         return value
 
+    def help_message(self):
+        ss = []
+        if len(self.help) != 0:
+            ss.append('{0} '.format(self.help))
+        if self.choices is not None:
+            ss.append('{{{0}}}'.format(', '.join(map(str, self.choices))))
+        if isinstance(self.default, (str, int, float, bool)):
+            ss.append('(default: {0})'.format(self.default))
+        ss.append('({0})'.format('required' if self.required else 'optional'))
+        return ''.join(ss)
+
 
 class ConfigParser:
     def __init__(self, name, option_list):
