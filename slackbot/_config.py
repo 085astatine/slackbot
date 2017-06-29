@@ -47,7 +47,11 @@ class Option:
                 message = ("the following argument is required '{0:s}'"
                            .format(self.name))
                 raise OptionError(message)
-            return self.default  # return default value
+            # return default value
+            if isinstance(self.default, str) and self.type is not None:
+                return self.type(self.default)
+            else:
+                return self.default
         value = data[self.name]
         # type
         if callable(self.type):
