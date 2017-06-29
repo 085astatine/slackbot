@@ -60,7 +60,7 @@ class OptionTest(unittest.TestCase):
 class ConfigParserTest(unittest.TestCase):
     def test_plain(self):
         parser = slackbot.ConfigParser(
-                "Test",
+                'Test',
                 (slackbot.Option('foo'), slackbot.Option('bar')))
         data = {'foo': '0', 'bar': '1'}
         result = parser.parse(data)
@@ -69,7 +69,7 @@ class ConfigParserTest(unittest.TestCase):
 
     def test_dict(self):
         parser = slackbot.ConfigParser(
-                "Test",
+                'Test',
                 (slackbot.Option('foo'), ))
         data = {'foo': {'bar': '0', 'baz': '1'}}
         result = parser.parse(data)
@@ -78,7 +78,7 @@ class ConfigParserTest(unittest.TestCase):
 
     def test_list(self):
         parser = slackbot.ConfigParser(
-                "Test",
+                'Test',
                 (slackbot.Option('foo'), ))
         data = {'foo': ['bar', 'baz']}
         result = parser.parse(data)
@@ -87,7 +87,7 @@ class ConfigParserTest(unittest.TestCase):
 
     def test_dict_in_list(self):
         parser = slackbot.ConfigParser(
-                "Test",
+                'Test',
                 (slackbot.Option('foo'), ))
         data = {'foo': [{'bar': '0'}, {'baz': '1'}]}
         result = parser.parse(data)
@@ -96,7 +96,7 @@ class ConfigParserTest(unittest.TestCase):
 
     def test_list_in_dict(self):
         parser = slackbot.ConfigParser(
-                "Test",
+                'Test',
                 (slackbot.Option('foo'), ))
         data = {'foo': {'bar': ['0', '1']}}
         result = parser.parse(data)
@@ -116,7 +116,7 @@ class ConfigParserExitTest(unittest.TestCase):
 
     def test_unrecognized_argumets(self):
         parser = slackbot.ConfigParser(
-                "Test",
+                'Test',
                 (slackbot.Option('foo'), ))
         data = {'foo': '0', 'bar': '1'}
         with self.assertRaises(SystemExit) as cm:
@@ -125,7 +125,7 @@ class ConfigParserExitTest(unittest.TestCase):
 
     def test_required_failed(self):
         parser = slackbot.ConfigParser(
-                "Test",
+                'Test',
                 (slackbot.Option('foo', required=True), ))
         data = {}
         with self.assertRaises(SystemExit) as cm:
@@ -134,7 +134,7 @@ class ConfigParserExitTest(unittest.TestCase):
 
     def test_choices_failed(self):
         parser = slackbot.ConfigParser(
-                "Test",
+                'Test',
                 (slackbot.Option('foo', choices=('bar', 'baz')), ))
         data = {'foo': 'foo'}
         with self.assertRaises(SystemExit) as cm:
