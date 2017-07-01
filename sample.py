@@ -19,6 +19,7 @@ if __name__ == '__main__':
                 fmt='%(name)s::%(levelname)s::%(message)s')
     logger.addHandler(handler)
 
-    bot = slackbot.Core(
+    bot = slackbot.create(
+                'Sample',
                 action_list={'Dummy': DummyAction},
                 logger=logger)

@@ -9,11 +9,12 @@ from ._config import ConfigParser, Option
 class Core(Action):
     def __init__(
                 self,
+                name,
                 action_list=None,
                 logger=None):
         Action.__init__(
                     self,
-                    'Core',
+                    name,
                     (logger
                         if logger is not None
                         else _logging.getLogger(__name__)))
@@ -21,15 +22,27 @@ class Core(Action):
                     action_list
                     if action_list is not None
                     else dict())
-        # config parser
-        config_parser_list = []
-        config_parser_list.append(ConfigParser('Core', self.option_list()))
-        config_parser_list.extend(
-                    ConfigParser(
-                                name,
-                                self._action_list[name].option_list())
-                    for name in sorted(self._action_list.keys()))
 
     @staticmethod
     def option_list():
         return tuple()
+
+
+def create(name, action_list=None, logger=None):
+    # logger
+    if logger is None:
+        logger = _logging.getLogger(__name__)
+    # action list
+    if action_list is None:
+        action_list = dict()
+    # config parser
+    config_parser_list = []
+    config_parser_list.append(ConfigParser('Core', Core.option_list()))
+    config_parser_list.extend(
+                ConfigParser(key, action_list[key].option_list())
+                for key in sorted(action_list.keys()))
+    return Core(name,
+                action_list={
+                    key: action(key)
+                    for key, action in action_list.items()},
+                logger=logger)
