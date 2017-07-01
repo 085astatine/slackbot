@@ -88,6 +88,8 @@ class ConfigParser:
         self.option_list = option_list
 
     def parse(self, data):
+        if data is None:
+            data = {}
         result = {}
         is_error = False
         for option in self.option_list:
