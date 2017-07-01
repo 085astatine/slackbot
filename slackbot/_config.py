@@ -105,7 +105,7 @@ class ConfigParser:
             if len(unused_key_list) != 0:
                 is_error = True
                 _sys.stderr.write(
-                        "unrecognized arguments: {0}"
+                        "unrecognized arguments: {0}\n"
                         .format(', '.join(map(repr, unused_key_list))))
         if is_error:
             _sys.exit(2)
