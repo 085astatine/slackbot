@@ -123,3 +123,12 @@ class ConfigParser:
         return _collections.namedtuple(
                     "{}Config".format(self.name),
                     result.keys())(**result)
+
+    def help_message(self):
+        strline = []
+        strline.append('{0}:'.format(self.name))
+        for option in self.option_list:
+            strline.append('  {0}: # {1}'.format(
+                        option.name,
+                        option.help_message()))
+        return '\n'.join(strline)

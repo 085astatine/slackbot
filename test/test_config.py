@@ -189,5 +189,18 @@ class ConfigParserExitTest(unittest.TestCase):
             retult = parser.parse(data)
         self.assertEqual(cm.exception.code, 2)
 
+
+class ConfigParserHelpTest(unittest.TestCase):
+    def test_plane(self):
+        parser = slackbot.ConfigParser(
+                'Test',
+                (slackbot.Option('foo'),
+                 slackbot.Option('bar')))
+        self.assertEqual(
+                parser.help_message(),
+                "Test:\n"
+                "  foo: # (optional)\n"
+                "  bar: # (optional)")
+
 if __name__ == '__main__':
     unittest.main()
