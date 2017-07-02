@@ -15,7 +15,7 @@ class Core(Action):
     def __init__(
                 self,
                 name,
-                action_list=None,
+                action_dict=None,
                 logger=None):
         Action.__init__(
                     self,
@@ -23,9 +23,9 @@ class Core(Action):
                     (logger
                         if logger is not None
                         else _logging.getLogger(__name__)))
-        self._action_list = (
-                    action_list
-                    if action_list is not None
+        self._action_dict = (
+                    action_dict
+                    if action_dict is not None
                     else dict())
 
     @staticmethod
@@ -35,15 +35,15 @@ class Core(Action):
 
 def create(
             name,
-            action_list=None,
+            action_dict=None,
             logger=None,
             argv=None):
     # logger
     if logger is None:
         logger = _logging.getLogger(__name__)
     # action list
-    if action_list is None:
-        action_list = dict()
+    if action_dict is None:
+        action_dict = dict()
     # argument parser
     argument_parser = _argparse.ArgumentParser(
                 description='SlackBot: {0}'.format(name))
@@ -73,8 +73,8 @@ def create(
     config_parser_list = _collections.OrderedDict()
     config_parser_list['Core'] = ConfigParser('Core', Core.option_list())
     config_parser_list.update(
-                (key, ConfigParser(key, action_list[key].option_list()))
-                for key in sorted(action_list.keys()))
+                (key, ConfigParser(key, action_dict[key].option_list()))
+                for key in sorted(action_dict.keys()))
     # show example of configuration file
     if option.show_config:
         logger.info('output example of configuration file')
@@ -95,11 +95,11 @@ def create(
         _sys.stderr.write('{0}\n'.format(message))
         _sys.exit(1)
     config_yaml = _yaml.load(option.config.open())
-    config_list = {key: parser.parse(config_yaml.get(key, None))
+    config_dict = {key: parser.parse(config_yaml.get(key, None))
                    for key, parser in config_parser_list.items()}
-    logger.debug('config: {0}'.format(config_list))
+    logger.debug('config: {0}'.format(config_dict))
     return Core(name,
-                action_list={
+                action_dict={
                     key: action(key)
-                    for key, action in action_list.items()},
+                    for key, action in action_dict.items()},
                 logger=logger)
