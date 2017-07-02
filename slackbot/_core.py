@@ -38,12 +38,15 @@ def create(
             action_dict=None,
             logger=None,
             argv=None):
-    # logger
+    # check arguments
     if logger is None:
         logger = _logging.getLogger(__name__)
-    # action list
     if action_dict is None:
         action_dict = dict()
+    if 'Core' in action_dict.keys():
+        _sys.stderr.write("The keyword 'Core' is reserved\n")
+        _sys.exit(2)
+    assert all(callable(action) for action in action_dict.values())
     # argument parser
     argument_parser = _argparse.ArgumentParser(
                 description='SlackBot: {0}'.format(name))
