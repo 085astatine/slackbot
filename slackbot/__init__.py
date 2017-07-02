@@ -2,4 +2,4 @@
 
 from ._action import Action
 from ._core import create
-from ._config import ConfigParser, Option, OptionError
+from ._config import Option, OptionError
