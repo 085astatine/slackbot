@@ -42,7 +42,7 @@ class Option:
 
     def evaluate(self, data):
         # required check
-        if self.name not in data:
+        if self.name not in data or data[self.name] is None:
             if self.required:
                 message = ("the following argument is required '{0:s}'"
                            .format(self.name))
