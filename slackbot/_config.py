@@ -96,7 +96,7 @@ class ConfigParser:
             try:
                 result[option.name] = option.evaluate(data)
             except OptionError as e:
-                _sys.stderr.write(str(e))
+                _sys.stderr.write('{0}\n'.format(str(e)))
                 is_error = True
         else:  # check unrecognized arguments
             unused_key_list = sorted(
