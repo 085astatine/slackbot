@@ -15,6 +15,7 @@ class Core(Action):
     def __init__(
                 self,
                 name,
+                args,
                 config,
                 action_dict=None,
                 logger=None):
@@ -25,14 +26,30 @@ class Core(Action):
                     (logger
                         if logger is not None
                         else _logging.getLogger(__name__)))
+        self._args = args
         self._action_dict = (
                     action_dict
                     if action_dict is not None
                     else dict())
 
+    def setup(self):
+        # load token
+        token_file = self._args.config.parent.joinpath(self.config.token_file)
+        if not token_file.exists():
+            self._logger.error("token file '{0}' does not exist"
+                               .format(token_file.resolve().as_posix()))
+        with token_file.open() as fin:
+            token = fin.read().strip()
+        self._logger.info("token file '{0}' has been loaded"
+                          .format(token_file.resolve().as_posix()))
+
     @staticmethod
     def option_list():
-        return tuple()
+        return (
+            Option('token_file',
+                   required=True,
+                   help='path to the file '
+                        'that Slack Authentification token is written'),)
 
 
 def create(
@@ -104,6 +121,7 @@ def create(
                    for key, parser in config_parser_list.items()}
     logger.debug('config: {0}'.format(config_dict))
     return Core(name,
+                option,
                 config_dict['Core'],
                 action_dict={
                     key: action(key, config_dict[key])

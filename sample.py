@@ -23,3 +23,4 @@ if __name__ == '__main__':
                 'Sample',
                 action_dict={'Dummy': DummyAction},
                 logger=logger)
+    bot.setup()
