@@ -7,6 +7,7 @@ import logging as _logging
 import pathlib as _pathlib
 import sys as _sys
 import yaml as _yaml
+import slackclient as _slackclient
 from ._action import Action
 from ._config import ConfigParser, Option
 
@@ -42,6 +43,10 @@ class Core(Action):
             token = fin.read().strip()
         self._logger.info("token file '{0}' has been loaded"
                           .format(token_file.resolve().as_posix()))
+        # client
+        Action.setup(self, _slackclient.SlackClient(token))
+        for action in self._action_dict.values():
+            action.setup(self._client)
 
     @staticmethod
     def option_list():
