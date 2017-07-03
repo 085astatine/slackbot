@@ -15,11 +15,13 @@ class Core(Action):
     def __init__(
                 self,
                 name,
+                config,
                 action_dict=None,
                 logger=None):
         Action.__init__(
                     self,
                     name,
+                    config,
                     (logger
                         if logger is not None
                         else _logging.getLogger(__name__)))
@@ -102,7 +104,8 @@ def create(
                    for key, parser in config_parser_list.items()}
     logger.debug('config: {0}'.format(config_dict))
     return Core(name,
+                config_dict['Core'],
                 action_dict={
-                    key: action(key)
+                    key: action(key, config_dict[key])
                     for key, action in action_dict.items()},
                 logger=logger)
