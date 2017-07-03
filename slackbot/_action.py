@@ -10,8 +10,8 @@ class Action(object):
                 name,
                 config,
                 logger=None):
-        self.name = name
-        self.config = config
+        self._name = name
+        self._config = config
         self._client = None
         self._logger = (
                     logger
@@ -20,6 +20,14 @@ class Action(object):
 
     def setup(self, client):
         self._client = client
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def config(self):
+        return self._config
 
     @staticmethod
     def option_list():
