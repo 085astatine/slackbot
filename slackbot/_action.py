@@ -21,6 +21,9 @@ class Action(object):
     def setup(self, client):
         self._client = client
 
+    def run(self, api_list):
+        pass
+
     @property
     def name(self):
         return self._name

@@ -55,8 +55,10 @@ class Core(Action):
             self._logger.info(
                         'connecting to the Real Time Messaging API: success')
             while True:
-                data = self._client.rtm_read()
-                self._logger.info(data)
+                api_list = self._client.rtm_read()
+                self._logger.info(api_list)
+                for action in self._action_dict.values():
+                    action.run(api_list)
                 _time.sleep(1.0)
         else:
             self._logger.error(
