@@ -6,8 +6,9 @@ import collections as _collections
 import logging as _logging
 import pathlib as _pathlib
 import sys as _sys
-import yaml as _yaml
+import time as _time
 import slackclient as _slackclient
+import yaml as _yaml
 from ._action import Action
 from ._config import ConfigParser, Option
 
@@ -47,6 +48,19 @@ class Core(Action):
         Action.setup(self, _slackclient.SlackClient(token))
         for action in self._action_dict.values():
             action.setup(self._client)
+
+    def run(self):
+        self._logger.info('connecting to the Real Time Messaging API')
+        if self._client.rtm_connect():
+            self._logger.info(
+                        'connecting to the Real Time Messaging API: success')
+            while True:
+                data = self._client.rtm_read()
+                self._logger.info(data)
+                _time.sleep(1.0)
+        else:
+            self._logger.error(
+                        'connecting to the Real Time Messaging API: failed')
 
     @staticmethod
     def option_list():
