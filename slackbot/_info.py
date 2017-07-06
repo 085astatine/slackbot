@@ -45,6 +45,20 @@ class User(object):
         return self._data['name']
 
 
+class UserList(object):
+    def __init__(self, user_list):
+        self._list = list(user_list)
+
+    def __iter__(self):
+        return self._list.__iter__()
+
+    def id_search(self, id):
+        return next(filter(lambda user: user.id == id, self._list), None)
+
+    def name_search(self, name):
+        return next(filter(lambda user: user.name == name, self._list), None)
+
+
 class InfoUpdate(Action):
     def __init__(
                 self,
@@ -65,9 +79,7 @@ class InfoUpdate(Action):
         team = Team(self.api_call('team.info')['team'])
         self._logger.debug("team id: '{0}'".format(team.id))
         self._logger.debug("team name: '{0}'".format(team.name))
-        # user
-        users_info = self.api_call('users.list')
-        for user_type in users_info['members']:
-            user = User(user_type)
-            self._logger.debug("user id: '{0}'".format(user.id))
-            self._logger.debug("user name: '{0}'".format(user.name))
+        # user list
+        user_list = UserList(
+                    User(user_object)
+                    for user_object in self.api_call('users.list')['members'])
