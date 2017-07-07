@@ -81,6 +81,9 @@ class UserList(object):
     def __iter__(self):
         return self._list.__iter__()
 
+    def __len__(self):
+        return self._list.__len__()
+
     def id_search(self, id):
         return next(filter(lambda user: user.id == id, self._list), None)
 
@@ -94,6 +97,9 @@ class ChannelList(object):
 
     def __iter__(self):
         return self._list.__iter__()
+
+    def __len__(self):
+        return self._list.__len__()
 
     def id_search(self, id):
         return next(filter(lambda channel: channel.id == id, self._list), None)
