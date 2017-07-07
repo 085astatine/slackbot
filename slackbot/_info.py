@@ -45,6 +45,35 @@ class User(object):
         return self._data['name']
 
 
+class Channel(object):
+    def __init__(self, data, user_list):
+        self._data = data
+        self._user_list = user_list
+
+    def get(self, key):
+        return self._data[key]
+
+    def update(self, data):
+        self._data.clear()
+        self._data.update(data)
+
+    @property
+    def id(self):
+        return self._data['id']
+
+    @property
+    def name(self):
+        return self._data['name']
+
+    @property
+    def members(self):
+        return list(map(self._user_list.id_search, self._data['members']))
+
+    @property
+    def is_archived(self):
+        return self._data['is_archived']
+
+
 class UserList(object):
     def __init__(self, user_list):
         self._list = list(user_list)
@@ -83,3 +112,8 @@ class InfoUpdate(Action):
         user_list = UserList(
                     User(user_object)
                     for user_object in self.api_call('users.list')['members'])
+        # channel
+        channel_list = list(
+                    Channel(channel_object, user_list)
+                    for channel_object
+                    in self.api_call('channels.list')['channels'])
