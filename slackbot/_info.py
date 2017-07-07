@@ -109,6 +109,25 @@ class ChannelList(object):
                     None)
 
 
+class Info(object):
+    def __init__(self, team, user_list, channel_list):
+        self._team = team
+        self._user_list = user_list
+        self._channel_list = channel_list
+
+    @property
+    def team(self):
+        return self._team
+
+    @property
+    def user_list(self):
+        return self._user_list
+
+    @property
+    def channel_list(self):
+        return self._channel_list
+
+
 class InfoUpdate(Action):
     def __init__(
                 self,
@@ -122,6 +141,7 @@ class InfoUpdate(Action):
                     (logger
                         if logger is not None
                         else _logging.getLogger(__name__)))
+        self._info = None
 
     def setup(self, client):
         Action.setup(self, client)
@@ -138,3 +158,9 @@ class InfoUpdate(Action):
                     Channel(channel_object, user_list)
                     for channel_object
                     in self.api_call('channels.list')['channels'])
+        # info
+        self._info = Info(team, user_list, channel_list)
+
+    @property
+    def info(self):
+        return self._info
