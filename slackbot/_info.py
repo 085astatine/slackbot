@@ -88,6 +88,21 @@ class UserList(object):
         return next(filter(lambda user: user.name == name, self._list), None)
 
 
+class ChannelList(object):
+    def __init__(self, channel_list):
+        self._list = list(channel_list)
+
+    def __iter__(self):
+        return self._list.__iter__()
+
+    def id_search(self, id):
+        return next(filter(lambda channel: channel.id == id, self._list), None)
+
+    def name_search(self, name):
+        return next(filter(lambda channel: channel.name == name, self._list),
+                    None)
+
+
 class InfoUpdate(Action):
     def __init__(
                 self,
@@ -112,8 +127,8 @@ class InfoUpdate(Action):
         user_list = UserList(
                     User(user_object)
                     for user_object in self.api_call('users.list')['members'])
-        # channel
-        channel_list = list(
+        # channel list
+        channel_list = ChannelList(
                     Channel(channel_object, user_list)
                     for channel_object
                     in self.api_call('channels.list')['channels'])
