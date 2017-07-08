@@ -110,10 +110,11 @@ class ChannelList(object):
 
 
 class Info(object):
-    def __init__(self, team, user_list, channel_list):
+    def __init__(self, team, user_list, channel_list, bot_id):
         self._team = team
         self._user_list = user_list
         self._channel_list = channel_list
+        self._bot_id = bot_id
 
     @property
     def team(self):
@@ -126,6 +127,10 @@ class Info(object):
     @property
     def channel_list(self):
         return self._channel_list
+
+    @property
+    def bot(self):
+        return self._user_list.id_search(self._bot_id)
 
 
 class InfoUpdate(Action):
@@ -145,6 +150,9 @@ class InfoUpdate(Action):
 
     def setup(self, client):
         Action.setup(self, client)
+        # auth.test
+        auth_test = self.api_call('auth.test')
+        bot_id = auth_test['user_id']
         # team
         team = Team(self.api_call('team.info')['team'])
         self._logger.debug("team id: '{0}'".format(team.id))
@@ -159,7 +167,7 @@ class InfoUpdate(Action):
                     for channel_object
                     in self.api_call('channels.list')['channels'])
         # info
-        self._info = Info(team, user_list, channel_list)
+        self._info = Info(team, user_list, channel_list, bot_id)
 
     @property
     def info(self):
