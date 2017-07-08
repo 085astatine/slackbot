@@ -138,6 +138,23 @@ class ChannelList(object):
                     None)
 
 
+class GroupList(object):
+    def __init__(self, group_list):
+        self._list = list(group_list)
+
+    def __iter__(self):
+        return self._list.__iter__()
+
+    def __len__(self):
+        return self._list.__len__()
+
+    def id_search(self, id):
+        return next(filter(lambda group: group.id == id, self._list), None)
+
+    def name_search(self, name):
+        return next(filter(lambda group: group.name == name, self._list), None)
+
+
 class Info(object):
     def __init__(self, team, user_list, channel_list, bot_id):
         self._team = team
@@ -196,7 +213,7 @@ class InfoUpdate(Action):
                     for channel_object
                     in self.api_call('channels.list')['channels'])
         # group list
-        group_list = list(
+        group_list = GroupList(
                     Group(group_object, user_list)
                     for group_object in self.api_call('groups.list')['groups'])
         # info
