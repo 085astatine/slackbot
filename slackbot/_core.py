@@ -11,6 +11,7 @@ import slackclient as _slackclient
 import yaml as _yaml
 from ._action import Action
 from ._config import ConfigParser, Option
+from ._info import InfoUpdate
 
 
 class Core(Action):
@@ -29,6 +30,12 @@ class Core(Action):
                         if logger is not None
                         else _logging.getLogger(__name__)))
         self._args = args
+        self._info_update = InfoUpdate(
+                    'InfoUpdate',
+                    ConfigParser(
+                                'InfoUpdate',
+                                InfoUpdate.option_list()).parse({}),
+                    logger.getChild('InfoUpdate'))
         self._action_dict = (
                     action_dict
                     if action_dict is not None
@@ -44,10 +51,12 @@ class Core(Action):
             token = fin.read().strip()
         self._logger.info("token file '{0}' has been loaded"
                           .format(token_file.resolve().as_posix()))
-        # client
-        Action.setup(self, _slackclient.SlackClient(token))
+        # client, info
+        client = _slackclient.SlackClient(token)
+        self._info_update.setup(client)
+        Action.setup(self, client, self._info_update.info)
         for action in self._action_dict.values():
-            action.setup(self._client)
+            action.setup(self._client, self._info_update.info)
 
     def run(self):
         self._logger.info('connecting to the Real Time Messaging API')
@@ -59,6 +68,7 @@ class Core(Action):
                 self._logger.info(api_list)
                 for action in self._action_dict.values():
                     action.run(api_list)
+                self._info_update.run(api_list)
                 _time.sleep(1.0)
         else:
             self._logger.error(
