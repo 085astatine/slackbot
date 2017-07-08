@@ -74,6 +74,35 @@ class Channel(object):
         return self._data['is_archived']
 
 
+class Group(object):
+    def __init__(self, data, user_list):
+        self._data = data
+        self._user_list = user_list
+
+    def get(self, key):
+        return self._data[key]
+
+    def update(self, data):
+        self._data.clear()
+        self._data.update(data)
+
+    @property
+    def id(self):
+        return self._data['id']
+
+    @property
+    def name(self):
+        return self._data['name']
+
+    @property
+    def members(self):
+        return list(map(self._user_list.id_search, self._data['members']))
+
+    @property
+    def is_archived(self):
+        return self._data['is_archived']
+
+
 class UserList(object):
     def __init__(self, user_list):
         self._list = list(user_list)
@@ -166,6 +195,10 @@ class InfoUpdate(Action):
                     Channel(channel_object, user_list)
                     for channel_object
                     in self.api_call('channels.list')['channels'])
+        # group list
+        group_list = list(
+                    Group(group_object, user_list)
+                    for group_object in self.api_call('groups.list')['groups'])
         # info
         self._info = Info(team, user_list, channel_list, bot_id)
 
