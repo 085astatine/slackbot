@@ -119,6 +119,14 @@ class UserList(object):
     def name_search(self, name):
         return next(filter(lambda user: user.name == name, self._list), None)
 
+    def add(self, user):
+        self._list.append(user)
+
+    def remove(self, id):
+        user = self.id_search(id)
+        if user is not None:
+            self._list.remove(user)
+
 
 class ChannelList(object):
     def __init__(self, channel_list):
@@ -137,6 +145,14 @@ class ChannelList(object):
         return next(filter(lambda channel: channel.name == name, self._list),
                     None)
 
+    def add(self, channel):
+        self._list.append(channel)
+
+    def remove(self, id):
+        channel = self.id_search(id)
+        if channel is not None:
+            self._list.remove(channel)
+
 
 class GroupList(object):
     def __init__(self, group_list):
@@ -153,6 +169,14 @@ class GroupList(object):
 
     def name_search(self, name):
         return next(filter(lambda group: group.name == name, self._list), None)
+
+    def add(self, group):
+        self._list.append(group)
+
+    def remove(self, id):
+        group = self.id_search(id)
+        if group is not None:
+            self._list.remove(group)
 
 
 class Info(object):
