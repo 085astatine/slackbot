@@ -156,10 +156,11 @@ class GroupList(object):
 
 
 class Info(object):
-    def __init__(self, team, user_list, channel_list, bot_id):
+    def __init__(self, team, user_list, channel_list, group_list, bot_id):
         self._team = team
         self._user_list = user_list
         self._channel_list = channel_list
+        self._group_list = group_list
         self._bot_id = bot_id
 
     @property
@@ -173,6 +174,10 @@ class Info(object):
     @property
     def channel_list(self):
         return self._channel_list
+
+    @property
+    def group_list(self):
+        return self._group_list
 
     @property
     def bot(self):
@@ -217,7 +222,7 @@ class InfoUpdate(Action):
                     Group(group_object, user_list)
                     for group_object in self.api_call('groups.list')['groups'])
         # info
-        self._info = Info(team, user_list, channel_list, bot_id)
+        self._info = Info(team, user_list, channel_list, group_list, bot_id)
 
     @property
     def info(self):
