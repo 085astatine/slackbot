@@ -294,6 +294,17 @@ class InfoUpdate(Action):
             elif (api_type == 'team_domain_change' or
                   api_type == 'team_rename'):
                 is_team_updated = True
+            # message with subtype
+            elif api_type == 'message' and 'subtype' in api:
+                subtype = api['subtype']
+                # channel_purpose, channel_topic
+                if (subtype == 'channel_purpose' or
+                    subtype == 'channel_topic'):
+                    updated_channel_id_list.add(api['channel'])
+                # group_purpose, group_topic
+                elif (subtype == 'group_purpose' or
+                      subtype == 'group_topic'):
+                    updated_group_id_list.add(api['channel'])
         # update team
         if is_team_updated:
             self.info.team.update(self.api_call('team.info')['team'])
