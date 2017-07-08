@@ -263,16 +263,14 @@ class InfoUpdate(Action):
             elif api_type == 'team_join':
                 self.info.user_list.add(User(api['user']))
             # member_joined_channel, member_left_channel
-            elif (api_type == 'member_joined_channel' or
-                  api_type == 'member_left_channel'):
+            elif api_type in ('member_joined_channel', 'member_left_channel'):
                 channel_type = api['channel_type']
                 if channel_type == 'C':
                     updated_channel_id_list.add(api['channel'])
                 elif channel_type == 'G':
                     updated_group_id_list.add(api['channel'])
             # channel_archive, channel_unarchive
-            elif (api_type == 'channel_archive' or
-                  api_type == 'channel_unarchive'):
+            elif api_type in ('channel_archive', 'channel_unarchive'):
                 updated_channel_id_list.add(api['channel'])
             # channel_rename
             elif api_type == 'channel_rename':
@@ -284,26 +282,22 @@ class InfoUpdate(Action):
             elif api_type == 'channel_deleted':
                 self.info.channel_list.remove(api['channel'])
             # group_archive, group_unarchive
-            elif (api_type == 'group_archive' or
-                  api_type == 'group_unarchive'):
+            elif api_type in ('group_archive', 'group_unarchive'):
                 updated_group_id_list.add(api['group'])
             # group_rename
             elif api_type == 'group_rename':
                 updated_group_id_list.add(api['group']['id'])
             # team_domain_change, team_rename
-            elif (api_type == 'team_domain_change' or
-                  api_type == 'team_rename'):
+            elif api_type in ('team_domain_change', 'team_rename'):
                 is_team_updated = True
             # message with subtype
             elif api_type == 'message' and 'subtype' in api:
                 subtype = api['subtype']
                 # channel_purpose, channel_topic
-                if (subtype == 'channel_purpose' or
-                    subtype == 'channel_topic'):
+                if subtype in ('channel_purpose', 'channel_topic'):
                     updated_channel_id_list.add(api['channel'])
                 # group_purpose, group_topic
-                elif (subtype == 'group_purpose' or
-                      subtype == 'group_topic'):
+                elif subtype in ('group_purpose', 'group_topic'):
                     updated_group_id_list.add(api['channel'])
         # update team
         if is_team_updated:
