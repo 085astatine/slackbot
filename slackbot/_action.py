@@ -13,13 +13,15 @@ class Action(object):
         self._name = name
         self._config = config
         self._client = None
+        self._info = None
         self._logger = (
                     logger
                     if logger is not None
                     else _logging.getLogger(__name__))
 
-    def setup(self, client):
+    def setup(self, client, info):
         self._client = client
+        self._info = info
 
     def run(self, api_list):
         pass
@@ -41,6 +43,10 @@ class Action(object):
     @property
     def config(self):
         return self._config
+
+    @property
+    def info(self):
+        return self._info
 
     @staticmethod
     def option_list():

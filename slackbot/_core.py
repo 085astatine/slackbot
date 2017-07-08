@@ -51,12 +51,12 @@ class Core(Action):
             token = fin.read().strip()
         self._logger.info("token file '{0}' has been loaded"
                           .format(token_file.resolve().as_posix()))
-        # client
+        # client, info
         client = _slackclient.SlackClient(token)
-        Action.setup(self, client)
-        self._info_update.setup(self._client)
+        self._info_update.setup(client)
+        Action.setup(self, client, self._info_update.info)
         for action in self._action_dict.values():
-            action.setup(self._client)
+            action.setup(self._client, self._info_update.info)
 
     def run(self):
         self._logger.info('connecting to the Real Time Messaging API')

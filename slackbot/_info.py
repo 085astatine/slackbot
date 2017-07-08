@@ -221,10 +221,9 @@ class InfoUpdate(Action):
                     (logger
                         if logger is not None
                         else _logging.getLogger(__name__)))
-        self._info = None
 
     def setup(self, client):
-        Action.setup(self, client)
+        Action.setup(self, client, None)
         # auth.test
         auth_test = self.api_call('auth.test')
         bot_id = auth_test['user_id']
@@ -337,7 +336,3 @@ class InfoUpdate(Action):
                 self._logger.info(
                             "add group(id:'{0}', name:'{1}')"
                             .format(group.id, group.name))
-
-    @property
-    def info(self):
-        return self._info
