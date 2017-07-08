@@ -301,6 +301,7 @@ class InfoUpdate(Action):
                     updated_group_id_list.add(api['channel'])
         # update team
         if is_team_updated:
+            self._logger.info('update team')
             self.info.team.update(self.api_call('team.info')['team'])
         # update channel
         for channel_id in updated_channel_id_list:
@@ -309,10 +310,16 @@ class InfoUpdate(Action):
                                            channel=channel_id)['channel']
             if channel is not None:
                 channel.update(channel_object)
+                self._logger.info(
+                            "update channel(id:'{0}', name:'{1}')"
+                            .format(channel.id, channel.name))
             else:
                 self.info.channel_list.add(Channel(
                             channel_object,
                             self.info.user_list))
+                self._logger.info(
+                            "add channel(id:'{0}', name:'{1}')"
+                            .format(channel.id, channel.name))
         # update group
         for group_id in updated_group_id_list:
             group = self.info.group_list.id_search(group_id)
@@ -320,10 +327,16 @@ class InfoUpdate(Action):
                                          group=group_id)['group']
             if group is not None:
                 group.update(group_object)
+                self._logger.info(
+                            "update group(id:'{0}', name:'{1}')"
+                            .format(group.id, group.name))
             else:
                 self.info.group_list.add(Group(
                             group_object,
                             self.info.user_list))
+                self._logger.info(
+                            "add group(id:'{0}', name:'{1}')"
+                            .format(group.id, group.name))
 
     @property
     def info(self):
