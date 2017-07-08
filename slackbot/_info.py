@@ -248,6 +248,78 @@ class InfoUpdate(Action):
         # info
         self._info = Info(team, user_list, channel_list, group_list, bot_id)
 
+    def run(self, api_list):
+        is_team_updated = False
+        updated_channel_id_list = set()
+        updated_group_id_list = set()
+        for api in api_list:
+            api_type = api['type']
+            # user_change
+            if api_type == 'user_change':
+                user = self.info.user_list.id_search(api['user']['id'])
+                if user is not None:
+                    user.update(api['user'])
+            # team join
+            elif api_type == 'team_join':
+                self.info.user_list.add(User(api['user']))
+            # member_joined_channel, member_left_channel
+            elif (api_type == 'member_joined_channel' or
+                  api_type == 'member_left_channel'):
+                channel_type = api['channel_type']
+                if channel_type == 'C':
+                    updated_channel_id_list.add(api['channel'])
+                elif channel_type == 'G':
+                    updated_group_id_list.add(api['channel'])
+            # channel_archive, channel_unarchive
+            elif (api_type == 'channel_archive' or
+                  api_type == 'channel_unarchive'):
+                updated_channel_id_list.add(api['channel'])
+            # channel_rename
+            elif api_type == 'channel_rename':
+                updated_channel_id_list.add(api['channel']['id'])
+            # channel_created
+            elif api_type == 'channel_created':
+                updated_channel_id_list.add(api['channel']['id'])
+            # channel_deleted
+            elif api_type == 'channel_deleted':
+                self.info.channel_list.remove(api['channel'])
+            # group_archive, group_unarchive
+            elif (api_type == 'group_archive' or
+                  api_type == 'group_unarchive'):
+                updated_group_id_list.add(api['group'])
+            # group_rename
+            elif api_type == 'group_rename':
+                updated_group_id_list.add(api['group']['id'])
+            # team_domain_change, team_rename
+            elif (api_type == 'team_domain_change' or
+                  api_type == 'team_rename'):
+                is_team_updated = True
+        # update team
+        if is_team_updated:
+            self.info.team.update(self.api_call('team.info')['team'])
+        # update channel
+        for channel_id in updated_channel_id_list:
+            channel = self.info.channel_list.id_search(channel_id)
+            channel_object = self.api_call('channels.info',
+                                           channel=channel_id)['channel']
+            if channel is not None:
+                channel.update(channel_object)
+            else:
+                self.info.channel_list.add(Channel(
+                            channel_object,
+                            self.info.user_list))
+        # update group
+        for group_id in updated_group_id_list:
+            group = self.info.group_list.id_search(group_id)
+            group_object = self.api_call('groups.info',
+                                         group=group_id)['group']
+            if group is not None:
+                group.update(group_object)
+            else:
+                self.info.group_list.add(Group(
+                            group_object,
+                            self.info.user_list))
+
     @property
     def info(self):
         return self._info
