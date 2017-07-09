@@ -155,6 +155,8 @@ def create(
                 option,
                 config_dict['Core'],
                 action_dict={
-                    key: action(key, config_dict[key])
+                    key: action(key,
+                                config_dict[key],
+                                logger=logger.getChild(key))
                     for key, action in action_dict.items()},
                 logger=logger)
