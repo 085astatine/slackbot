@@ -67,7 +67,7 @@ class Core(Action):
             while True:
                 timer = _threading.Thread(
                             name='CoreTimer',
-                            target=lambda: _time.sleep(1.0))
+                            target=lambda: _time.sleep(self.config.interval))
                 timer.start()
                 api_list = self._client.rtm_read()
                 self._logger.info(api_list)
@@ -85,7 +85,11 @@ class Core(Action):
             Option('token_file',
                    required=True,
                    help='path to the file '
-                        'that Slack Authentification token is written'),)
+                        'that Slack Authentification token is written'),
+            Option('interval',
+                   default=1.0,
+                   type=float,
+                   help='interval(seconds) to read real time messaging API'))
 
 
 def create(
