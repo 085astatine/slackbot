@@ -6,6 +6,7 @@ import collections as _collections
 import logging as _logging
 import pathlib as _pathlib
 import sys as _sys
+import threading as _threading
 import time as _time
 import slackclient as _slackclient
 import yaml as _yaml
@@ -64,12 +65,16 @@ class Core(Action):
             self._logger.info(
                         'connecting to the Real Time Messaging API: success')
             while True:
+                timer = _threading.Thread(
+                            name='CoreTimer',
+                            target=lambda: _time.sleep(1.0))
+                timer.start()
                 api_list = self._client.rtm_read()
                 self._logger.info(api_list)
                 for action in self._action_dict.values():
                     action.run(api_list)
                 self._info_update.run(api_list)
-                _time.sleep(1.0)
+                timer.join()
         else:
             self._logger.error(
                         'connecting to the Real Time Messaging API: failed')
