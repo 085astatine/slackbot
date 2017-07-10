@@ -316,6 +316,7 @@ class InfoUpdate(Action):
                 self.info.channel_list.add(Channel(
                             channel_object,
                             self.info.user_list))
+                channel = self.info.channel_list.id_search(channel_id)
                 self._logger.info(
                             "add channel(id:'{0}', name:'{1}')"
                             .format(channel.id, channel.name))
@@ -333,6 +334,7 @@ class InfoUpdate(Action):
                 self.info.group_list.add(Group(
                             group_object,
                             self.info.user_list))
+                group = self.info.group_list.id_search(group_id)
                 self._logger.info(
                             "add group(id:'{0}', name:'{1}')"
                             .format(group.id, group.name))
