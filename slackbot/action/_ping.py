@@ -2,7 +2,7 @@
 
 
 import logging as _logging
-from .. import Action
+from .. import Action, Option
 
 
 class Ping(Action):
@@ -21,3 +21,19 @@ class Ping(Action):
 
     def run(self, api_list):
         pass
+
+    @staticmethod
+    def option_list():
+        return (
+            Option('channel',
+                   action=lambda x: [x] if isinstance(x, str) else x,
+                   default=[],
+                   help='target channel name (list or string)'),
+            Option('word',
+                   type=str,
+                   default='ping',
+                   help='word to react'),
+            Option('reply',
+                   type=str,
+                   default='pong',
+                   help='reply message'))
