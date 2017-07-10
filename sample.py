@@ -3,6 +3,7 @@
 
 import logging
 import slackbot
+import slackbot.action
 
 
 class DummyAction(slackbot.Action):
@@ -21,7 +22,8 @@ if __name__ == '__main__':
 
     bot = slackbot.create(
                 'Sample',
-                action_dict={'Dummy': DummyAction},
+                action_dict={'Dummy': DummyAction,
+                             'Ping': slackbot.action.Ping},
                 logger=logger)
     bot.setup()
     bot.run()
