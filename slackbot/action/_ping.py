@@ -2,6 +2,7 @@
 
 
 import logging as _logging
+import re as _re
 from .. import Action, Option
 
 
@@ -20,7 +21,27 @@ class Ping(Action):
                         else _logging.getLogger(__name__)))
 
     def run(self, api_list):
-        pass
+        for api in api_list:
+            if api['type'] == 'message' and 'subtype' not in api:
+                channel = self.info.channel_list.id_search(api['channel'])
+                if channel is None or channel.name not in self.config.channel:
+                    continue
+                pattern = r'<@(?P<to>[^>]+)>:?\s+(?P<text>.+)'
+                regex = _re.match(pattern, api['text'])
+                if (regex and
+                        regex.group('to') == self.info.bot.id and
+                        regex.group('text') == self.config.word):
+                    user = self.info.user_list.id_search(api['user'])
+                    if user is None:
+                        self._logger.error("unknown user id '{0}'"
+                                           .format(api['user']))
+                        continue
+                    reply = '<@{0}> {1}'.format(user.id, self.config.reply)
+                    self._logger.info("ping from '{0}' on '{1}'"
+                                      .format(user.name, channel.name))
+                    self.api_call('chat.postMessage',
+                                  text=reply,
+                                  channel=channel.id)
 
     @staticmethod
     def option_list():
