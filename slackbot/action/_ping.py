@@ -3,7 +3,7 @@
 
 import logging as _logging
 import re as _re
-from .. import Action, Option
+from .. import Action, Option, unescape_text
 
 
 class Ping(Action):
@@ -30,7 +30,8 @@ class Ping(Action):
                 regex = _re.match(pattern, api['text'])
                 if (regex and
                         regex.group('to') == self.info.bot.id and
-                        regex.group('text').strip() == self.config.word):
+                        unescape_text(regex.group('text').strip())
+                        == self.config.word):
                     user = self.info.user_list.id_search(api['user'])
                     if user is None:
                         self._logger.error("unknown user id '{0}'"
