@@ -53,6 +53,7 @@ class Ping(Action):
                    help='target channel name (list or string)'),
             Option('word',
                    type=str,
+                   action=str.strip,
                    default='ping',
                    help='word to react'),
             Option('reply',
