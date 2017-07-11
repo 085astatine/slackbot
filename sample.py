@@ -22,7 +22,8 @@ if __name__ == '__main__':
 
     bot = slackbot.create(
                 'Sample',
-                action_dict={'Dummy': DummyAction,
+                action_dict={'APILogger': slackbot.action.APILogger,
+                             'Dummy': DummyAction,
                              'Ping': slackbot.action.Ping},
                 logger=logger)
     bot.setup()
