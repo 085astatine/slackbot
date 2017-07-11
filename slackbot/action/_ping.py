@@ -30,7 +30,7 @@ class Ping(Action):
                 regex = _re.match(pattern, api['text'])
                 if (regex and
                         regex.group('to') == self.info.bot.id and
-                        regex.group('text') == self.config.word):
+                        regex.group('text').strip() == self.config.word):
                     user = self.info.user_list.id_search(api['user'])
                     if user is None:
                         self._logger.error("unknown user id '{0}'"
