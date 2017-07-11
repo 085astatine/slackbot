@@ -51,3 +51,15 @@ class Action(object):
     @staticmethod
     def option_list():
         return tuple()
+
+
+def escape_text(string):
+    return (string.replace('&', '&amp;')
+                  .replace('>', '&gt;')
+                  .replace('<', '&lt;'))
+
+
+def unescape_text(string):
+    return (string.replace('&amp;', '&')
+                  .replace('&gt;', '>')
+                  .replace('&lt;', '<'))
