@@ -70,7 +70,6 @@ class Core(Action):
                             target=lambda: _time.sleep(self.config.interval))
                 timer.start()
                 api_list = self._client.rtm_read()
-                self._logger.info(api_list)
                 for action in self._action_dict.values():
                     action.run(api_list)
                 self._info_update.run(api_list)
