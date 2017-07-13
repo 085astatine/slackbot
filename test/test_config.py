@@ -18,15 +18,20 @@ class OptionTest(unittest.TestCase):
         data = {}
         self.assertEqual(option.evaluate(data), '0')
 
-    def test_default_with_type(self):
-        option = slackbot.Option('foo', default='0', type=int)
-        data = {}
-        self.assertEqual(option.evaluate(data), 0)
-
     def test_type(self):
         option = slackbot.Option('foo', type=int)
         data = {'foo': '1'}
         self.assertEqual(option.evaluate(data), 1)
+
+    def test_type_with_default(self):
+        option = slackbot.Option('foo', default='0', type=int)
+        data = {}
+        self.assertEqual(option.evaluate(data), 0)
+
+    def test_type_without_default(self):
+        option = slackbot.Option('foo', type=int)
+        data = {}
+        self.assertEqual(option.evaluate(data), None)
 
     def test_required(self):
         option = slackbot.Option('foo', required=True)
@@ -60,6 +65,26 @@ class OptionTest(unittest.TestCase):
         option = slackbot.Option('foo', action=str.upper)
         data = {'foo': 'bar'}
         self.assertEqual(option.evaluate(data), 'BAR')
+
+    def test_action_with_type(self):
+        option = slackbot.Option('foo', action=hex, type=int)
+        data = {'foo': '0'}
+        self.assertEqual(option.evaluate(data), '0x0')
+
+    def test_action_with_default(self):
+        option = slackbot.Option('foo', action=str.upper, default='bar')
+        data = {}
+        self.assertEqual(option.evaluate(data), 'BAR')
+
+    def test_action_without_default(self):
+        option = slackbot.Option('foo', action=str.upper)
+        data = {}
+        self.assertEqual(option.evaluate(data), None)
+
+    def test_action_and_type_with_default(self):
+        option = slackbot.Option('foo', action=hex, default='255', type=int)
+        data = {}
+        self.assertEqual(option.evaluate(data), '0xff')
 
 
 class OptionHelpTest(unittest.TestCase):
