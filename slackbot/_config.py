@@ -48,10 +48,13 @@ class Option:
                            .format(self.name))
                 raise OptionError(message)
             # return default value
-            if isinstance(self.default, str) and self.type is not None:
-                return self.type(self.default)
-            else:
-                return self.default
+            default = self.default
+            if default is not None:
+                if isinstance(self.default, str) and self.type is not None:
+                    default = self.type(default)
+                if self.action is not None:
+                    default = self.action(default)
+            return default
         value = data[self.name]
         # type
         if callable(self.type):
