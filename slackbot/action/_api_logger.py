@@ -47,7 +47,7 @@ class APILogger(Action):
     def option_list():
         return (
             Option('mode',
-                   action= lambda mode: getattr(Mode, mode),
+                   action=lambda mode: getattr(Mode, mode),
                    default='raw',
                    choices=[mode.name for mode in Mode],
                    help='output format'),
