@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
-import logging as _logging
+import logging
 from ._action import Action
 
 
@@ -220,7 +220,7 @@ class InfoUpdate(Action):
                     config,
                     (logger
                         if logger is not None
-                        else _logging.getLogger(__name__)))
+                        else logging.getLogger(__name__)))
 
     def setup(self, client):
         Action.setup(self, client, None)

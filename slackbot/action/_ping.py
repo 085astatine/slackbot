@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 
-import logging as _logging
-import re as _re
+import logging
+import re
 from .. import Action, Option, unescape_text
 
 
@@ -18,7 +18,7 @@ class Ping(Action):
                     config,
                     (logger
                         if logger is not None
-                        else _logging.getLogger(__name__)))
+                        else logging.getLogger(__name__)))
 
     def run(self, api_list):
         for api in api_list:
@@ -27,7 +27,7 @@ class Ping(Action):
                 if channel is None or channel.name not in self.config.channel:
                     continue
                 pattern = r'<@(?P<to>[^>]+)>:?\s+(?P<text>.+)'
-                regex = _re.match(pattern, api['text'])
+                regex = re.match(pattern, api['text'])
                 if (regex and
                         regex.group('to') == self.info.bot.id and
                         unescape_text(regex.group('text').strip())

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 
-import collections as _collections
-import sys as _sys
+import collections
+import sys
 
 
 class OptionError(Exception):
@@ -99,7 +99,7 @@ class ConfigParser:
             try:
                 result[option.name] = option.evaluate(data)
             except OptionError as e:
-                _sys.stderr.write('{0}\n'.format(str(e)))
+                sys.stderr.write('{0}\n'.format(str(e)))
                 is_error = True
         else:  # check unrecognized arguments
             unused_key_list = sorted(
@@ -107,17 +107,17 @@ class ConfigParser:
                                 option.name for option in self.option_list))
             if len(unused_key_list) != 0:
                 is_error = True
-                _sys.stderr.write(
+                sys.stderr.write(
                         "unrecognized arguments: {0}\n"
                         .format(', '.join(map(repr, unused_key_list))))
         if is_error:
-            _sys.exit(2)
+            sys.exit(2)
         """convert: dict -> namedtuple('_', ...), list -> tuple"""
         def convert(value):
             if isinstance(value, dict):
                 for key in value.keys():
                     value[key] = convert(value[key])
-                return _collections.namedtuple('_', value.keys())(**value)
+                return collections.namedtuple('_', value.keys())(**value)
             elif isinstance(value, list):
                 return tuple(convert(i) for i in value)
             else:
@@ -125,7 +125,7 @@ class ConfigParser:
         # convert each value of result
         for key, value in result.items():
             result[key] = convert(value)
-        return _collections.namedtuple(
+        return collections.namedtuple(
                     "{}Config".format(self.name),
                     result.keys())(**result)
 
