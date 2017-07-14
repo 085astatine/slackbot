@@ -27,10 +27,10 @@ class Ping(Action):
                 if channel is None or channel.name not in self.config.channel:
                     continue
                 pattern = r'<@(?P<to>[^>]+)>:?\s+(?P<text>.+)'
-                regex = re.match(pattern, api['text'])
-                if (regex and
-                        regex.group('to') == self.info.bot.id and
-                        unescape_text(regex.group('text').strip())
+                match = re.match(pattern, api['text'])
+                if (match and
+                        match.group('to') == self.info.bot.id and
+                        unescape_text(match.group('text').strip())
                         == self.config.word):
                     user = self.info.user_list.id_search(api['user'])
                     if user is None:
