@@ -227,5 +227,6 @@ class ConfigParserHelpTest(unittest.TestCase):
                 "  foo: # (optional)\n"
                 "  bar: # (optional)")
 
+
 if __name__ == '__main__':
     unittest.main()

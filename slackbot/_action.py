@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
-import logging as _logging
+import logging
 
 
 class Action(object):
@@ -17,7 +17,7 @@ class Action(object):
         self._logger = (
                     logger
                     if logger is not None
-                    else _logging.getLogger(__name__))
+                    else logging.getLogger(__name__))
 
     def setup(self, client, info):
         self._client = client
@@ -30,9 +30,9 @@ class Action(object):
         self._logger.debug("call API '{0}': {1}".format(method, kwargs))
         result = self._client.api_call(method, **kwargs)
         self._logger.log(
-                    (_logging.DEBUG
+                    (logging.DEBUG
                         if result.get('ok', False)
-                        else _logging.ERROR),
+                        else logging.ERROR),
                     'result: {0}'.format(result))
         return result
 

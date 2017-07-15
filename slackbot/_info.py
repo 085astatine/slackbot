@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
-import logging as _logging
+import logging
 from ._action import Action
 
 
@@ -114,10 +114,10 @@ class UserList(object):
         return self._list.__len__()
 
     def id_search(self, id):
-        return next(filter(lambda user: user.id == id, self._list), None)
+        return next((user for user in self._list if user.id == id), None)
 
     def name_search(self, name):
-        return next(filter(lambda user: user.name == name, self._list), None)
+        return next((user for user in self._list if user.name == name), None)
 
     def add(self, user):
         self._list.append(user)
@@ -139,11 +139,13 @@ class ChannelList(object):
         return self._list.__len__()
 
     def id_search(self, id):
-        return next(filter(lambda channel: channel.id == id, self._list), None)
+        return next((channel for channel in self._list if channel.id == id),
+                    None)
 
     def name_search(self, name):
-        return next(filter(lambda channel: channel.name == name, self._list),
-                    None)
+        return next(
+                (channel for channel in self._list if channel.name == name),
+                None)
 
     def add(self, channel):
         self._list.append(channel)
@@ -165,10 +167,11 @@ class GroupList(object):
         return self._list.__len__()
 
     def id_search(self, id):
-        return next(filter(lambda group: group.id == id, self._list), None)
+        return next((group for group in self._list if group.id == id), None)
 
     def name_search(self, name):
-        return next(filter(lambda group: group.name == name, self._list), None)
+        return next((group for group in self._list if group.name == name),
+                    None)
 
     def add(self, group):
         self._list.append(group)
@@ -220,7 +223,7 @@ class InfoUpdate(Action):
                     config,
                     (logger
                         if logger is not None
-                        else _logging.getLogger(__name__)))
+                        else logging.getLogger(__name__)))
 
     def setup(self, client):
         Action.setup(self, client, None)

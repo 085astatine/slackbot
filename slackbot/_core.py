@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 
 
-import argparse as _argparse
-import collections as _collections
-import logging as _logging
-import pathlib as _pathlib
-import sys as _sys
-import threading as _threading
-import time as _time
-import slackclient as _slackclient
-import yaml as _yaml
+import argparse
+import collections
+import logging
+import pathlib
+import sys
+import threading
+import time
+import slackclient
+import yaml
 from ._action import Action
 from ._config import ConfigParser, Option
 from ._info import InfoUpdate
@@ -29,7 +29,7 @@ class Core(Action):
                     config,
                     (logger
                         if logger is not None
-                        else _logging.getLogger(__name__)))
+                        else logging.getLogger(__name__)))
         self._args = args
         self._info_update = InfoUpdate(
                     'InfoUpdate',
@@ -53,7 +53,7 @@ class Core(Action):
         self._logger.info("token file '{0}' has been loaded"
                           .format(token_file.resolve().as_posix()))
         # client, info
-        client = _slackclient.SlackClient(token)
+        client = slackclient.SlackClient(token)
         self._info_update.setup(client)
         Action.setup(self, client, self._info_update.info)
         for action in self._action_dict.values():
@@ -65,9 +65,9 @@ class Core(Action):
             self._logger.info(
                         'connecting to the Real Time Messaging API: success')
             while True:
-                timer = _threading.Thread(
+                timer = threading.Thread(
                             name='CoreTimer',
-                            target=lambda: _time.sleep(self.config.interval))
+                            target=lambda: time.sleep(self.config.interval))
                 timer.start()
                 api_list = self._client.rtm_read()
                 for action in self._action_dict.values():
@@ -98,20 +98,20 @@ def create(
             argv=None):
     # check arguments
     if logger is None:
-        logger = _logging.getLogger(__name__)
+        logger = logging.getLogger(__name__)
     if action_dict is None:
         action_dict = dict()
     if 'Core' in action_dict.keys():
-        _sys.stderr.write("The keyword 'Core' is reserved\n")
-        _sys.exit(2)
+        sys.stderr.write("The keyword 'Core' is reserved\n")
+        sys.exit(2)
     assert all(callable(action) for action in action_dict.values())
     # argument parser
-    argument_parser = _argparse.ArgumentParser(
+    argument_parser = argparse.ArgumentParser(
                 description='SlackBot: {0}'.format(name))
     argument_parser.add_argument(
                 '--config',
                 dest='config',
-                type=_pathlib.Path,
+                type=pathlib.Path,
                 metavar='YAML_FILE',
                 help='set the configuration file in yaml')
     argument_parser.add_argument(
@@ -128,10 +128,10 @@ def create(
     option = argument_parser.parse_args(argv)
     # log level
     if option.verbose:
-        logger.setLevel(_logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
     logger.debug('command line option: {0}'.format(option))
     # config parser
-    config_parser_list = _collections.OrderedDict()
+    config_parser_list = collections.OrderedDict()
     config_parser_list['Core'] = ConfigParser('Core', Core.option_list())
     config_parser_list.update(
                 (key, ConfigParser(key, action_dict[key].option_list()))
@@ -139,23 +139,23 @@ def create(
     # show example of configuration file
     if option.show_config:
         logger.info('output example of configuration file')
-        _sys.stdout.write('{0}\n'.format(
+        sys.stdout.write('{0}\n'.format(
                     '\n'.join(parser.help_message()
                               for parser in config_parser_list.values())))
-        _sys.exit(0)
+        sys.exit(0)
     # load configuration file
     if option.config is None:
         message = 'configuration file is not selected'
         logger.error(message)
-        _sys.stderr.write('{0}\n'.format(message))
-        _sys.exit(1)
+        sys.stderr.write('{0}\n'.format(message))
+        sys.exit(1)
     elif not option.config.exists():
         message = 'configuration file({0}) does not exit'.format(
                     option.config.as_posix())
         logger.error(message)
-        _sys.stderr.write('{0}\n'.format(message))
-        _sys.exit(1)
-    config_yaml = _yaml.load(option.config.open())
+        sys.stderr.write('{0}\n'.format(message))
+        sys.exit(1)
+    config_yaml = yaml.load(option.config.open())
     config_dict = {key: parser.parse(config_yaml.get(key, None))
                    for key, parser in config_parser_list.items()}
     logger.debug('config: {0}'.format(config_dict))
