@@ -2,188 +2,194 @@
 
 
 import logging
+from typing import Any, Dict, Iterable, Iterator, List, Optional
 from ._action import Action
 
 
 class Team(object):
-    def __init__(self, data):
+    def __init__(self, data: Dict[str, Any]) -> None:
         self._data = data
 
-    def get(self, key):
+    def get(self, key: str) -> Any:
         return self._data[key]
 
-    def update(self, data):
+    def update(self, data: Dict[str, Any]) -> None:
         self._data.clear()
         self._data.update(data)
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._data['id']
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._data['name']
 
 
 class User(object):
-    def __init__(self, data):
+    def __init__(self, data: Dict[str, Any]) -> None:
         self._data = data
 
-    def get(self, key):
+    def get(self, key: str) -> Any:
         return self._data[key]
 
-    def update(self, data):
+    def update(self, data: Dict[str, Any]) -> None:
         self._data.clear()
         self._data.update(data)
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._data['id']
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._data['name']
 
 
 class Channel(object):
-    def __init__(self, data, user_list):
+    def __init__(self, data: Dict[str, Any], user_list: 'UserList') -> None:
         self._data = data
         self._user_list = user_list
 
-    def get(self, key):
+    def get(self, key: str) -> Any:
         return self._data[key]
 
-    def update(self, data):
+    def update(self, data: Dict[str, Any]) -> None:
         self._data.clear()
         self._data.update(data)
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._data['id']
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._data['name']
 
     @property
-    def members(self):
+    def members(self) -> List[User]:
         return list(map(self._user_list.id_search, self._data['members']))
 
     @property
-    def is_archived(self):
+    def is_archived(self) -> bool:
         return self._data['is_archived']
 
 
 class Group(object):
-    def __init__(self, data, user_list):
+    def __init__(self, data: Dict[str, Any], user_list: 'UserList') -> None:
         self._data = data
         self._user_list = user_list
 
-    def get(self, key):
+    def get(self, key: str) -> Any:
         return self._data[key]
 
-    def update(self, data):
+    def update(self, data: Dict[str, Any]) -> None:
         self._data.clear()
         self._data.update(data)
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._data['id']
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._data['name']
 
     @property
-    def members(self):
+    def members(self) -> List[User]:
         return list(map(self._user_list.id_search, self._data['members']))
 
     @property
-    def is_archived(self):
+    def is_archived(self) -> bool:
         return self._data['is_archived']
 
 
 class UserList(object):
-    def __init__(self, user_list):
+    def __init__(self, user_list: Iterable[User]) -> None:
         self._list = list(user_list)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[User]:
         return self._list.__iter__()
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._list.__len__()
 
-    def id_search(self, id):
+    def id_search(self, id: str) -> Optional[User]:
         return next((user for user in self._list if user.id == id), None)
 
-    def name_search(self, name):
+    def name_search(self, name: str) -> Optional[User]:
         return next((user for user in self._list if user.name == name), None)
 
-    def add(self, user):
+    def add(self, user: User) -> None:
         self._list.append(user)
 
-    def remove(self, id):
+    def remove(self, id: str) -> None:
         user = self.id_search(id)
         if user is not None:
             self._list.remove(user)
 
 
 class ChannelList(object):
-    def __init__(self, channel_list):
+    def __init__(self, channel_list: Iterable[Channel]) -> None:
         self._list = list(channel_list)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Channel]:
         return self._list.__iter__()
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._list.__len__()
 
-    def id_search(self, id):
+    def id_search(self, id: str) -> Optional[Channel]:
         return next((channel for channel in self._list if channel.id == id),
                     None)
 
-    def name_search(self, name):
+    def name_search(self, name: str) -> Optional[Channel]:
         return next(
                 (channel for channel in self._list if channel.name == name),
                 None)
 
-    def add(self, channel):
+    def add(self, channel: Channel) -> None:
         self._list.append(channel)
 
-    def remove(self, id):
+    def remove(self, id: str) -> None:
         channel = self.id_search(id)
         if channel is not None:
             self._list.remove(channel)
 
 
 class GroupList(object):
-    def __init__(self, group_list):
+    def __init__(self, group_list: Iterable[Group]) -> None:
         self._list = list(group_list)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Group]:
         return self._list.__iter__()
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._list.__len__()
 
-    def id_search(self, id):
+    def id_search(self, id: str) -> Optional[Group]:
         return next((group for group in self._list if group.id == id), None)
 
-    def name_search(self, name):
+    def name_search(self, name: str) -> Optional[Group]:
         return next((group for group in self._list if group.name == name),
                     None)
 
-    def add(self, group):
+    def add(self, group: Group) -> None:
         self._list.append(group)
 
-    def remove(self, id):
+    def remove(self, id: str) -> None:
         group = self.id_search(id)
         if group is not None:
             self._list.remove(group)
 
 
 class Info(object):
-    def __init__(self, team, user_list, channel_list, group_list, bot_id):
+    def __init__(self,
+                 team: Team,
+                 user_list: UserList,
+                 channel_list: ChannelList,
+                 group_list: GroupList,
+                 bot_id: str) -> None:
         self._team = team
         self._user_list = user_list
         self._channel_list = channel_list
@@ -191,23 +197,23 @@ class Info(object):
         self._bot_id = bot_id
 
     @property
-    def team(self):
+    def team(self) -> Team:
         return self._team
 
     @property
-    def user_list(self):
+    def user_list(self) -> UserList:
         return self._user_list
 
     @property
-    def channel_list(self):
+    def channel_list(self) -> ChannelList:
         return self._channel_list
 
     @property
-    def group_list(self):
+    def group_list(self) -> GroupList:
         return self._group_list
 
     @property
-    def bot(self):
+    def bot(self) -> Optional[User]:
         return self._user_list.id_search(self._bot_id)
 
 
