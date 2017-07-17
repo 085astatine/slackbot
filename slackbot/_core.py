@@ -8,6 +8,7 @@ import pathlib
 import sys
 import threading
 import time
+from typing import Any, Dict, List, Optional, Tuple, Type
 import slackclient
 import yaml
 from ._action import Action
@@ -16,13 +17,12 @@ from ._info import InfoUpdate
 
 
 class Core(Action):
-    def __init__(
-                self,
-                name,
-                args,
-                config,
-                action_dict=None,
-                logger=None):
+    def __init__(self,
+                 name: str,
+                 args: argparse.Namespace,
+                 config: Any,
+                 action_dict: Dict[str, Action] = None,
+                 logger: Optional[logging.Logger] = None) -> None:
         Action.__init__(
                     self,
                     name,
@@ -42,7 +42,7 @@ class Core(Action):
                     if action_dict is not None
                     else dict())
 
-    def setup(self):
+    def setup(self) -> None:
         # load token
         token_file = self._args.config.parent.joinpath(self.config.token_file)
         if not token_file.exists():
@@ -59,7 +59,7 @@ class Core(Action):
         for action in self._action_dict.values():
             action.setup(self._client, self._info_update.info)
 
-    def run(self):
+    def run(self) -> None:
         self._logger.info('connecting to the Real Time Messaging API')
         if self._client.rtm_connect():
             self._logger.info(
@@ -79,7 +79,7 @@ class Core(Action):
                         'connecting to the Real Time Messaging API: failed')
 
     @staticmethod
-    def option_list():
+    def option_list() -> Tuple[Option, ...]:
         return (
             Option('token_file',
                    required=True,
@@ -93,9 +93,9 @@ class Core(Action):
 
 def create(
             name,
-            action_dict=None,
-            logger=None,
-            argv=None):
+            action_dict: Dict[str, Type[Action]] = None,
+            logger: Optional[logging.Logger] = None,
+            argv: Optional[List[str]] = None) -> Core:
     # check arguments
     if logger is None:
         logger = logging.getLogger(__name__)
@@ -131,7 +131,7 @@ def create(
         logger.setLevel(logging.DEBUG)
     logger.debug('command line option: {0}'.format(option))
     # config parser
-    config_parser_list = collections.OrderedDict()
+    config_parser_list: Dict[str, ConfigParser] = collections.OrderedDict()
     config_parser_list['Core'] = ConfigParser('Core', Core.option_list())
     config_parser_list.update(
                 (key, ConfigParser(key, action_dict[key].option_list()))

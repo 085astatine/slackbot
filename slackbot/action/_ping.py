@@ -3,15 +3,15 @@
 
 import logging
 import re
+from typing import Any, Dict, List, Optional, Tuple
 from .. import Action, Option, unescape_text
 
 
 class Ping(Action):
-    def __init__(
-                self,
-                name,
-                config,
-                logger=None):
+    def __init__(self,
+                 name: str,
+                 config: Any,
+                 logger: Optional[logging.Logger] = None) -> None:
         Action.__init__(
                     self,
                     name,
@@ -20,7 +20,7 @@ class Ping(Action):
                         if logger is not None
                         else logging.getLogger(__name__)))
 
-    def run(self, api_list):
+    def run(self, api_list: List[Dict[str, Any]]) -> None:
         for api in api_list:
             if api['type'] == 'message' and 'subtype' not in api:
                 channel = self.info.channel_list.id_search(api['channel'])
@@ -45,7 +45,7 @@ class Ping(Action):
                                   channel=channel.id)
 
     @staticmethod
-    def option_list():
+    def option_list() -> Tuple[Option, ...]:
         return (
             Option('channel',
                    action=lambda x: [x] if isinstance(x, str) else x,

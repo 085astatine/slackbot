@@ -3,26 +3,26 @@
 
 import collections
 import sys
+from typing import Any, Callable, Dict, Iterable, Optional, Tuple, Type
 
 
 class OptionError(Exception):
-    def __init__(self, message):
+    def __init__(self, message: str) -> None:
         self.message = message
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.message
 
 
 class Option:
-    def __init__(
-                self,
-                name,
-                action=None,
-                default=None,
-                type=None,
-                choices=None,
-                required=False,
-                help=""):
+    def __init__(self,
+                 name: str,
+                 action: Optional[Callable[[Any], Any]] = None,
+                 default: Optional[Any] = None,
+                 type: Optional[Type] = None,
+                 choices: Optional[Iterable] = None,
+                 required: bool = False,
+                 help: str = "") -> None:
         self.name = name
         if action is not None:
             assert callable(action)
@@ -40,7 +40,7 @@ class Option:
         self.required = required
         self.help = help
 
-    def evaluate(self, data):
+    def evaluate(self, data: Dict[str, Any]) -> Any:
         # required check
         if self.name not in data or data[self.name] is None:
             if self.required:
@@ -73,7 +73,7 @@ class Option:
             value = self.action(value)
         return value
 
-    def help_message(self):
+    def help_message(self) -> str:
         ss = []
         if len(self.help) != 0:
             ss.append('{0} '.format(self.help))
@@ -86,11 +86,11 @@ class Option:
 
 
 class ConfigParser:
-    def __init__(self, name, option_list):
+    def __init__(self, name: str, option_list: Tuple[Option, ...]) -> None:
         self.name = name
         self.option_list = option_list
 
-    def parse(self, data):
+    def parse(self, data: Optional[Dict[str, Any]]) -> Any:
         if data is None:
             data = {}
         result = {}
@@ -113,7 +113,7 @@ class ConfigParser:
         if is_error:
             sys.exit(2)
         """convert: dict -> namedtuple('_', ...), list -> tuple"""
-        def convert(value):
+        def convert(value: Any) -> Any:
             if isinstance(value, dict):
                 for key in value.keys():
                     value[key] = convert(value[key])
@@ -129,7 +129,7 @@ class ConfigParser:
                     "{}Config".format(self.name),
                     result.keys())(**result)
 
-    def help_message(self):
+    def help_message(self) -> str:
         strline = []
         strline.append('{0}:'.format(self.name))
         for option in self.option_list:
