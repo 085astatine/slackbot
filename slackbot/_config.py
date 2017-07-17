@@ -3,7 +3,7 @@
 
 import collections
 import sys
-from typing import Any, Callable, Dict, Iterator, Optional, Tuple, Type
+from typing import Any, Callable, Dict, Iterable, Optional, Tuple, Type
 
 
 class OptionError(Exception):
@@ -20,7 +20,7 @@ class Option:
                  action: Optional[Callable[[Any], Any]] = None,
                  default: Optional[Any] = None,
                  type: Optional[Type] = None,
-                 choices: Optional[Iterator] = None,
+                 choices: Optional[Iterable] = None,
                  required: bool = False,
                  help: str = "") -> None:
         self.name = name

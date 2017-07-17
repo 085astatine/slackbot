@@ -3,6 +3,7 @@
 
 import logging
 from typing import Any, Dict, Iterable, Iterator, List, Optional
+import slackclient
 from ._action import Action
 
 
@@ -218,11 +219,10 @@ class Info(object):
 
 
 class InfoUpdate(Action):
-    def __init__(
-                self,
-                name,
-                config,
-                logger=None):
+    def __init__(self,
+                 name: str,
+                 config: Any,
+                 logger: Optional[logging.Logger] = None) -> None:
         Action.__init__(
                     self,
                     name,
@@ -231,7 +231,7 @@ class InfoUpdate(Action):
                         if logger is not None
                         else logging.getLogger(__name__)))
 
-    def setup(self, client):
+    def setup(self, client: slackclient.SlackClient) -> None:
         Action.setup(self, client, None)
         # auth.test
         auth_test = self.api_call('auth.test')
@@ -256,7 +256,7 @@ class InfoUpdate(Action):
         # info
         self._info = Info(team, user_list, channel_list, group_list, bot_id)
 
-    def run(self, api_list):
+    def run(self, api_list: List[Dict[str, Any]]) -> None:
         is_team_updated = False
         updated_channel_id_list = set()
         updated_group_id_list = set()
