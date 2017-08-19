@@ -61,6 +61,24 @@ class DownloadProgress(object):
         else:
             return None
 
+    @staticmethod
+    def format_bytes(
+                value: Union[int, float, None],
+                precision: int = 2) -> str:
+        if value is None:
+            return '-B'
+        prefix_list = ('', 'Ki', 'Mi', 'Gi', 'Ti')
+        integer_part = value
+        unit = 1
+        unit_index = 0
+        while integer_part >= 1024 and unit_index < len(prefix_list) - 1:
+            integer_part //= 1024
+            unit *= 1024
+            unit_index += 1
+        return ('{{value:.{precision}f}}{{unit}}B'
+                .format(precision=precision)
+                .format(value=value / unit, unit=prefix_list[unit_index]))
+
 
 class DownloadObserver(object):
     def __init__(
@@ -91,14 +109,16 @@ class DownloadObserver(object):
         return self._is_finished
 
     def _receive_progress(self, progress: DownloadProgress) -> None:
-        print('{0} {1}/{2} at {3}'.format(
+        format_bytes = DownloadProgress.format_bytes
+        print('{0} {1}/{2} ({3:.2%}) at {4}'.format(
                     self._path.as_posix(),
-                    progress.downloaded_size,
-                    progress.file_size,
+                    format_bytes(progress.downloaded_size),
+                    format_bytes(progress.file_size),
+                    progress.progress_rate,
                     progress.elapsed_time))
-        print('  {0:.2f} B/sec (average {1:.2f} B/sec)'.format(
-                    progress.download_speed,
-                    progress.average_download_speed))
+        print('  {0}/s (average {1}/s)'.format(
+                    format_bytes(progress.download_speed),
+                    format_bytes(progress.average_download_speed)))
 
     def _receive_finish(self) -> None:
         self._is_finished = True
