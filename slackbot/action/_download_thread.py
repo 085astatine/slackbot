@@ -137,7 +137,10 @@ class DownloadThread(threading.Thread):
                 # streaming download
                 response = requests.get(self._url, stream=True)
                 # file size
-                file_size = response.headers.get('Content-Length')
+                content_length = response.headers.get('Content-Length', '')
+                file_size = (int(content_length)
+                             if content_length.isdigit()
+                             else None)
                 downloaded_size = 0
                 # download
                 for data in response.iter_content(chunk_size=self._chunk_size):
