@@ -16,11 +16,13 @@ class DownloadProgress(object):
                 file_size: Optional[int],
                 downloaded_size: int,
                 start_time: float,
-                present_time: float) -> None:
+                present_time: float,
+                download_speed: Optional[float]) -> None:
         self._file_size = file_size
         self._downloaded_size = downloaded_size
         self._start_time = start_time
         self._present_time = present_time
+        self._download_speed = download_speed
 
     @property
     def file_size(self) -> Optional[int]:
@@ -47,6 +49,17 @@ class DownloadProgress(object):
     @property
     def elapsed_time(self) -> float:
         return self._present_time - self._start_time
+
+    @property
+    def download_speed(self) -> Optional[float]:
+        return self._download_speed
+
+    @property
+    def average_download_speed(self) -> Optional[float]:
+        if self.elapsed_time > 0:
+            return self.downloaded_size / self.elapsed_time
+        else:
+            return None
 
 
 class DownloadObserver(object):
@@ -83,6 +96,9 @@ class DownloadObserver(object):
                     progress.downloaded_size,
                     progress.file_size,
                     progress.elapsed_time))
+        print('  {0:.2f} B/sec (average {1:.2f} B/sec)'.format(
+                    progress.download_speed,
+                    progress.average_download_speed))
 
     def _receive_finish(self) -> None:
         self._is_finished = True
@@ -112,9 +128,11 @@ class DownloadThread(threading.Thread):
     def run(self) -> None:
         with tempfile.NamedTemporaryFile(mode='wb', delete=False) as temp_file:
             temp_file_path = pathlib.Path(temp_file.name)
-            # time counter
+            # initialize time
             start_time = time.perf_counter()
             previous_time = start_time
+            present_time = start_time
+            report_time = start_time
             try:
                 # streaming download
                 response = requests.get(self._url, stream=True)
@@ -125,17 +143,26 @@ class DownloadThread(threading.Thread):
                 for data in response.iter_content(chunk_size=self._chunk_size):
                     temp_file.write(data)
                     downloaded_size += len(data)
-                    # time counter
+                    # update time
+                    previous_time = present_time
                     present_time = time.perf_counter()
                     # progress report
-                    if present_time - previous_time > self._report_interval:
+                    if present_time - report_time > self._report_interval:
+                        # download speed
+                        download_speed = (
+                                len(data) / (present_time - previous_time)
+                                if present_time - previous_time > 0.0
+                                else None)
+                        # progress report
                         progress = DownloadProgress(
                                     file_size=file_size,
                                     downloaded_size=downloaded_size,
                                     start_time=start_time,
-                                    present_time=present_time)
+                                    present_time=present_time,
+                                    download_speed=download_speed)
                         self._observer._receive_progress(progress)
-                        previous_time = present_time
+                        # update report time
+                        report_time = present_time
             except requests.RequestException as error:
                 self._observer._receive_error(error)
                 temp_file_path.unlink()
