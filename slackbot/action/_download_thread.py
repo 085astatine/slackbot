@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import collections
+import datetime
 import logging
 import pathlib
 import shutil
@@ -119,17 +120,28 @@ class DownloadObserver(object):
         return self._is_finished
 
     def _receive_progress(self, progress: DownloadProgress) -> None:
-        format_bytes = DownloadProgress.format_bytes
-        print('{0} {1}/{2} ({3:.2%}) at {4}'.format(
-                    self._path.as_posix(),
+        format_bytes = progress.__class__.format_bytes
+        message = []
+        # progress rate
+        if progress.file_size is not None:
+            message.append('{0}/{1} ({2:.2%})'.format(
                     format_bytes(progress.downloaded_size),
                     format_bytes(progress.file_size),
-                    progress.progress_rate,
-                    progress.elapsed_time))
-        print('  {0}/s (average {1}/s)'.format(
-                    format_bytes(progress.download_speed),
-                    format_bytes(progress.average_download_speed)))
-        print('  remaing: {0}'.format(progress.remaining_time))
+                    progress.progress_rate))
+        else:
+            message.append('{0}/{1}'.format(
+                    format_bytes(progress.downloaded_size),
+                    format_bytes(progress.file_size)))
+        # speed
+        message.append('{0}/s'.format(
+                    format_bytes(progress.download_speed)))
+        # elapsed time
+        message.append('in {0}'.format(
+                    str(datetime.timedelta(seconds=progress.elapsed_time))))
+        # output to logger
+        self._logger.debug('progress: {0} {1}'.format(
+                    self._path.name,
+                    ' '.join(message)))
 
     def _receive_finish(self) -> None:
         self._is_finished = True
