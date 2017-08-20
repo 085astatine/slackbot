@@ -62,6 +62,15 @@ class DownloadProgress(object):
         else:
             return None
 
+    @property
+    def remaining_time(self) -> Optional[float]:
+        if self.file_size is None:
+            return None
+        elif self.download_speed is None or self.download_speed <= 0.0:
+            return None
+        else:
+            return self.remaining_size / self.download_speed
+
     @staticmethod
     def format_bytes(
                 value: Union[int, float, None],
@@ -120,6 +129,7 @@ class DownloadObserver(object):
         print('  {0}/s (average {1}/s)'.format(
                     format_bytes(progress.download_speed),
                     format_bytes(progress.average_download_speed)))
+        print('  remaing: {0}'.format(progress.remaining_time))
 
     def _receive_finish(self) -> None:
         self._is_finished = True
