@@ -166,7 +166,7 @@ class DownloadThread(threading.Thread):
                 path: pathlib.Path,
                 url: str,
                 chunk_size: int = 1024,
-                report_interval: float = 0.1,
+                report_interval: float = 5.0,
                 speedmeter_size: int = 100) -> None:
         threading.Thread.__init__(self)
         self._observer = observer
