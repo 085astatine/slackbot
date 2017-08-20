@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import tempfile
+import collections
 import logging
 import pathlib
 import shutil
+import tempfile
 import threading
 import time
 from typing import Optional, Union
@@ -137,20 +138,21 @@ class DownloadThread(threading.Thread):
                 path: pathlib.Path,
                 url: str,
                 chunk_size: int = 1024,
-                report_interval: float = 0.1) -> None:
+                report_interval: float = 0.1,
+                speedmeter_size: int = 100) -> None:
         threading.Thread.__init__(self)
         self._observer = observer
         self._path = path
         self._url = url
         self._chunk_size = chunk_size
         self._report_interval = report_interval
+        self._speedmeter_size = speedmeter_size
 
     def run(self) -> None:
         with tempfile.NamedTemporaryFile(mode='wb', delete=False) as temp_file:
             temp_file_path = pathlib.Path(temp_file.name)
             # initialize time
             start_time = time.perf_counter()
-            previous_time = start_time
             present_time = start_time
             report_time = start_time
             try:
@@ -162,19 +164,24 @@ class DownloadThread(threading.Thread):
                              if content_length.isdigit()
                              else None)
                 downloaded_size = 0
+                # initialize speed meter
+                speedmeter = collections.deque(maxlen=self._speedmeter_size)
+                speedmeter.append((downloaded_size, present_time))
                 # download
                 for data in response.iter_content(chunk_size=self._chunk_size):
                     temp_file.write(data)
                     downloaded_size += len(data)
                     # update time
-                    previous_time = present_time
                     present_time = time.perf_counter()
+                    # update speedmeter
+                    speedmeter.append((downloaded_size, present_time))
                     # progress report
                     if present_time - report_time > self._report_interval:
                         # download speed
                         download_speed = (
-                                len(data) / (present_time - previous_time)
-                                if present_time - previous_time > 0.0
+                                (speedmeter[-1][0] - speedmeter[0][0])
+                                / (speedmeter[-1][1] - speedmeter[0][1])
+                                if speedmeter[-1][1] != speedmeter[0][1]
                                 else None)
                         # progress report
                         progress = DownloadProgress(
