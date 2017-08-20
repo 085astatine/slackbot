@@ -119,6 +119,16 @@ class DownloadObserver(object):
     def is_finished(self) -> bool:
         return self._is_finished
 
+    def _receive_start(
+                self,
+                temp_file_path: pathlib.Path,
+                response: requests.models.Response) -> None:
+        self._logger.info('url: {0}'.format(response.url))
+        self._logger.info('file size: {0}'.format(
+                    response.headers.get('Content-Length')))
+        self._logger.debug('temp file: {0}'.format(temp_file_path.as_posix()))
+        self._logger.debug('header: {0}'.format(response.headers))
+
     def _receive_progress(self, progress: DownloadProgress) -> None:
         format_bytes = progress.__class__.format_bytes
         message = []
@@ -189,6 +199,10 @@ class DownloadThread(threading.Thread):
             try:
                 # streaming download
                 response = requests.get(self._url, stream=True)
+                # start report
+                self._observer._receive_start(
+                            temp_file_path,
+                            response)
                 # file size
                 content_length = response.headers.get('Content-Length', '')
                 file_size = (int(content_length)
