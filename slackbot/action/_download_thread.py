@@ -123,11 +123,18 @@ class DownloadObserver(object):
                 self,
                 temp_file_path: pathlib.Path,
                 response: requests.models.Response) -> None:
-        self._logger.info('url: {0}'.format(response.url))
-        self._logger.info('file size: {0}'.format(
+        self._logger.info('[{0}] url: {0}'.format(
+                    self._path.name,
+                    response.url))
+        self._logger.info('[{0}] file size: {1}'.format(
+                    self._path.name,
                     response.headers.get('Content-Length')))
-        self._logger.debug('temp file: {0}'.format(temp_file_path.as_posix()))
-        self._logger.debug('header: {0}'.format(response.headers))
+        self._logger.debug('[{0}] temp file: {1}'.format(
+                    self._path.name,
+                    temp_file_path.as_posix()))
+        self._logger.debug('[{0}] header: {1}'.format(
+                    self._path.name,
+                    response.headers))
 
     def _receive_progress(self, progress: DownloadProgress) -> None:
         format_bytes = progress.__class__.format_bytes
@@ -149,21 +156,22 @@ class DownloadObserver(object):
         message.append('in {0}'.format(
                     str(datetime.timedelta(seconds=progress.elapsed_time))))
         # output to logger
-        self._logger.debug('progress: {0} {1}'.format(
+        self._logger.debug('[{0}] progress: {1}'.format(
                     self._path.name,
                     ' '.join(message)))
 
     def _receive_finish(self, progress: DownloadProgress) -> None:
         self._is_finished = True
         format_bytes = progress.__class__.format_bytes
-        self._logger.info('finish: {0} {1} ({2}/s) in {3}'.format(
+        self._logger.info('[{0}] finish: {1} ({2}/s) in {3}'.format(
                     self._path.name,
                     format_bytes(progress.downloaded_size),
                     format_bytes(progress.average_download_speed),
                     str(datetime.timedelta(seconds=progress.elapsed_time))))
 
     def _receive_error(self, error: Exception) -> None:
-        self._logger.error('{0}: {1}'.format(
+        self._logger.error('[{0}] {1}: {2}'.format(
+                    self._path.name,
                     error.__class__.__name__,
                     str(error)))
         self._is_finished = True
