@@ -143,8 +143,14 @@ class DownloadObserver(object):
                     self._path.name,
                     ' '.join(message)))
 
-    def _receive_finish(self) -> None:
+    def _receive_finish(self, progress: DownloadProgress) -> None:
         self._is_finished = True
+        format_bytes = progress.__class__.format_bytes
+        self._logger.info('finish: {0} {1} ({2}/s) in {3}'.format(
+                    self._path.name,
+                    format_bytes(progress.downloaded_size),
+                    format_bytes(progress.average_download_speed),
+                    str(datetime.timedelta(seconds=progress.elapsed_time))))
 
     def _receive_error(self, error: Exception) -> None:
         self._logger.error('{0}: {1}'.format(
@@ -173,6 +179,9 @@ class DownloadThread(threading.Thread):
     def run(self) -> None:
         with tempfile.NamedTemporaryFile(mode='wb', delete=False) as temp_file:
             temp_file_path = pathlib.Path(temp_file.name)
+            # initialize parameter
+            file_size = None
+            downloaded_size = 0
             # initialize time
             start_time = time.perf_counter()
             present_time = start_time
@@ -185,7 +194,6 @@ class DownloadThread(threading.Thread):
                 file_size = (int(content_length)
                              if content_length.isdigit()
                              else None)
-                downloaded_size = 0
                 # initialize speed meter
                 speedmeter = collections.deque(maxlen=self._speedmeter_size)
                 speedmeter.append((downloaded_size, present_time))
@@ -222,4 +230,10 @@ class DownloadThread(threading.Thread):
         # move file
         shutil.move(temp_file_path.as_posix(), self._path.as_posix())
         # finish report
-        self._observer._receive_finish()
+        progress = DownloadProgress(
+                    file_size=file_size,
+                    downloaded_size=downloaded_size,
+                    start_time=start_time,
+                    present_time=time.perf_counter(),
+                    download_speed=None)
+        self._observer._receive_finish(progress)
