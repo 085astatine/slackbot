@@ -91,6 +91,14 @@ class DownloadProgress(object):
                 .format(value=value / unit, unit=prefix_list[unit_index]))
 
 
+class DownloadException(Exception):
+    def __init__(self, response: requests) -> None:
+        self._response = response
+
+    def __str__(self) -> str:
+        return 'status code [{0}]'.format(self._response.status_code)
+
+
 class DownloadObserver(object):
     def __init__(
                 self,
@@ -232,6 +240,10 @@ class DownloadThread(threading.Thread):
             try:
                 # streaming download
                 response = requests.get(self._url, stream=True)
+                # status code check
+                if ((response.status_code // 100 == 4)
+                        or (response.status_code // 100 == 5)):
+                    raise DownloadException(response)
                 # start report
                 self._observer._receive_start(
                             temp_file_path,
@@ -270,7 +282,7 @@ class DownloadThread(threading.Thread):
                         self._observer._receive_progress(progress)
                         # update report time
                         report_time = present_time
-            except requests.RequestException as error:
+            except (DownloadException, requests.RequestException) as error:
                 self._observer._receive_error(error)
                 temp_file_path.unlink()
                 return
