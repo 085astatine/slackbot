@@ -17,6 +17,7 @@ class DownloadReport(Action, DownloadObserver):
                  path: pathlib.Path,
                  url: str,
                  channel: Channel,
+                 least_size: Optional[int] = None,
                  logger: Optional[logging.Logger] = None) -> None:
         Action.__init__(
                     self,
@@ -31,6 +32,7 @@ class DownloadReport(Action, DownloadObserver):
                     url,
                     self._logger)
         self._channel = channel
+        self._least_size = least_size
 
     def _receive_start(
                 self,
@@ -95,6 +97,19 @@ class DownloadReport(Action, DownloadObserver):
         self.api_call('chat.postMessage',
                       text=' '.join(message),
                       channel=self._channel.id)
+        # file size check
+        if (self._least_size is not None
+                and progress.downloaded_size < self._least_size):
+            message.clear()
+            message.append('[{0}]:delete'.format(save_path.name))
+            message.append('because ({0} < {1})'.format(
+                        format_bytes(progress.downloaded_size),
+                        format_bytes(self._least_size)))
+            self._logger.info(''.join(message))
+            self.api_call('chat.postMessage',
+                          text=' '.join(message),
+                          channel=self._channel.id)
+            save_path.unlink()
 
     def _receive_error(self, error: Exception) -> None:
         DownloadObserver._receive_error(self, error)
@@ -141,6 +156,7 @@ class Download(Action):
                                 path,
                                 url,
                                 channel,
+                                least_size=self.config.least_size,
                                 logger=self._logger.getChild('report'))
                     process.setup(
                                 self._client,
@@ -188,4 +204,8 @@ class Download(Action):
                    default=100,
                    type=int,
                    help=('number of data chunks'
-                         ' for download speed measurement')))
+                         ' for download speed measurement')),
+            Option('least_size',
+                   type=int,
+                   help=('minimun file size'
+                         ' to be concidered successful download')))
