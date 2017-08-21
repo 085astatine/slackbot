@@ -107,6 +107,7 @@ class DownloadObserver(object):
                     else pathlib.Path(path))
         self._url = url
         self._is_finished = False
+        self._lock = threading.Lock()
 
     def start(self, **kwargs) -> None:
         thread = DownloadThread(
@@ -117,7 +118,8 @@ class DownloadObserver(object):
         thread.start()
 
     def is_finished(self) -> bool:
-        return self._is_finished
+        with self._lock:
+            return self._is_finished
 
     @property
     def path(self) -> pathlib.Path:
@@ -185,17 +187,22 @@ class DownloadObserver(object):
                     format_bytes(progress.average_download_speed),
                     str(datetime.timedelta(seconds=progress.elapsed_time))))
         self._logger.info(' '.join(message))
-        self._is_finished = True
+        with self._lock:
+            self._is_finished = True
 
     def _receive_error(self, error: Exception) -> None:
         self._logger.error('[{0}] {1}: {2}'.format(
                     self._path.name,
                     error.__class__.__name__,
                     str(error)))
-        self._is_finished = True
+        with self._lock:
+            self._is_finished = True
 
 
 class DownloadThread(threading.Thread):
+
+    _lock = threading.Lock()
+
     def __init__(
                 self,
                 observer: DownloadObserver,
@@ -268,17 +275,18 @@ class DownloadThread(threading.Thread):
                 temp_file_path.unlink()
                 return
         # move file
-        if not self._path.parent.exists():
-            self._path.parent.mkdir(parents=True)
-        save_path = self._path
-        if save_path.exists():
-            index = 0
-            while save_path.exists():
-                save_path = self._path.parent.joinpath(
-                                '{0.stem}_{1}{0.suffix}'
-                                .format(self._path, index))
-                index += 1
-        shutil.move(temp_file_path.as_posix(), save_path.as_posix())
+        with __class__._lock:
+            if not self._path.parent.exists():
+                self._path.parent.mkdir(parents=True)
+            save_path = self._path
+            if save_path.exists():
+                index = 0
+                while save_path.exists():
+                    save_path = self._path.parent.joinpath(
+                                    '{0.stem}_{1}{0.suffix}'
+                                    .format(self._path, index))
+                    index += 1
+            shutil.move(temp_file_path.as_posix(), save_path.as_posix())
         # finish report
         progress = DownloadProgress(
                     file_size=file_size,
