@@ -146,7 +146,9 @@ class Download(Action):
                                 self._client,
                                 self._info)
                     process.start(
-                                report_interval=10.0)
+                                chunk_size=self.config.chunk_size,
+                                report_interval=self.config.report_interval,
+                                speedmeter_size=self.config.speedmeter_size)
                     self._process_list.append(process)
         # update process list
         finished_process_list = [
@@ -172,4 +174,18 @@ class Download(Action):
             Option('destination_directory',
                    action=lambda x: pathlib.Path().joinpath(x),
                    default='./download',
-                   help='directory where files are saved'))
+                   help='directory where files are saved'),
+            Option('chunk_size',
+                   default=1024,
+                   type=int,
+                   help='data chank size (byte) for streaming download'),
+            Option('report_interval',
+                   default=60.0,
+                   type=float,
+                   help=('interval in seconds'
+                         'between download progress reports')),
+            Option('speedmeter_size',
+                   default=100,
+                   type=int,
+                   help=('number of data chunks'
+                         'for download speed measurement')))
