@@ -74,17 +74,26 @@ class DownloadReport(Action, DownloadObserver):
                       text=' '.join(message),
                       channel=self._channel.id)
 
-    def _receive_finish(self, progress: DownloadProgress) -> None:
-        DownloadObserver._receive_finish(self, progress)
+    def _receive_finish(
+                self,
+                progress: DownloadProgress,
+                save_path: pathlib.Path) -> None:
+        DownloadObserver._receive_finish(self, progress, save_path)
         # post message
         format_bytes = DownloadProgress.format_bytes
-        message = '[{0}]:finish {1} at {2}/s in {3}'.format(
-                    self.path.name,
+        message = []
+        if save_path == self.path:
+            message.append('[{0}]:finish'.format(self.path.name))
+        else:
+            message.append('[{0}] -> [{1}]:finish'.format(
+                        self.path.name,
+                        save_path.name))
+        message.append(' {0} at {1}/s in {2}'.format(
                     format_bytes(progress.downloaded_size),
                     format_bytes(progress.average_download_speed),
-                    str(datetime.timedelta(seconds=progress.elapsed_time)))
+                    str(datetime.timedelta(seconds=progress.elapsed_time))))
         self.api_call('chat.postMessage',
-                      text=message,
+                      text=' '.join(message),
                       channel=self._channel.id)
 
     def _receive_error(self, error: Exception) -> None:
