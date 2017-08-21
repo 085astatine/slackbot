@@ -107,6 +107,7 @@ class DownloadObserver(object):
                     else pathlib.Path(path))
         self._url = url
         self._is_finished = False
+        self._lock = threading.Lock()
 
     def start(self, **kwargs) -> None:
         thread = DownloadThread(
@@ -117,13 +118,22 @@ class DownloadObserver(object):
         thread.start()
 
     def is_finished(self) -> bool:
-        return self._is_finished
+        with self._lock:
+            return self._is_finished
+
+    @property
+    def path(self) -> pathlib.Path:
+        return self._path
+
+    @property
+    def url(self) -> str:
+        return self._url
 
     def _receive_start(
                 self,
                 temp_file_path: pathlib.Path,
                 response: requests.models.Response) -> None:
-        self._logger.info('[{0}] url: {0}'.format(
+        self._logger.info('[{0}] url: {1}'.format(
                     self._path.name,
                     response.url))
         self._logger.info('[{0}] file size: {1}'.format(
@@ -160,24 +170,39 @@ class DownloadObserver(object):
                     self._path.name,
                     ' '.join(message)))
 
-    def _receive_finish(self, progress: DownloadProgress) -> None:
-        self._is_finished = True
+    def _receive_finish(
+                self,
+                progress: DownloadProgress,
+                save_path: pathlib.Path) -> None:
         format_bytes = progress.__class__.format_bytes
-        self._logger.info('[{0}] finish: {1} ({2}/s) in {3}'.format(
-                    self._path.name,
+        message = []
+        if save_path == self._path:
+            message.append('[{0}]:finish'.format(self._path.name))
+        else:
+            message.append('[{0}] -> [{1}]:finish'.format(
+                        self._path.name,
+                        save_path.name))
+        message.append('{0} ({1}/s) in {2}'.format(
                     format_bytes(progress.downloaded_size),
                     format_bytes(progress.average_download_speed),
                     str(datetime.timedelta(seconds=progress.elapsed_time))))
+        self._logger.info(' '.join(message))
+        with self._lock:
+            self._is_finished = True
 
     def _receive_error(self, error: Exception) -> None:
         self._logger.error('[{0}] {1}: {2}'.format(
                     self._path.name,
                     error.__class__.__name__,
                     str(error)))
-        self._is_finished = True
+        with self._lock:
+            self._is_finished = True
 
 
 class DownloadThread(threading.Thread):
+
+    _lock = threading.Lock()
+
     def __init__(
                 self,
                 observer: DownloadObserver,
@@ -250,7 +275,18 @@ class DownloadThread(threading.Thread):
                 temp_file_path.unlink()
                 return
         # move file
-        shutil.move(temp_file_path.as_posix(), self._path.as_posix())
+        with __class__._lock:
+            if not self._path.parent.exists():
+                self._path.parent.mkdir(parents=True)
+            save_path = self._path
+            if save_path.exists():
+                index = 0
+                while save_path.exists():
+                    save_path = self._path.parent.joinpath(
+                                    '{0.stem}_{1}{0.suffix}'
+                                    .format(self._path, index))
+                    index += 1
+            shutil.move(temp_file_path.as_posix(), save_path.as_posix())
         # finish report
         progress = DownloadProgress(
                     file_size=file_size,
@@ -258,4 +294,6 @@ class DownloadThread(threading.Thread):
                     start_time=start_time,
                     present_time=time.perf_counter(),
                     download_speed=None)
-        self._observer._receive_finish(progress)
+        self._observer._receive_finish(
+                    progress,
+                    save_path)
