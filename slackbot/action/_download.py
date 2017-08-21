@@ -170,7 +170,7 @@ class Download(Action):
                            r'<(?P<url>https?://[\w/:%#\$&\?\(\)~\.=\+\-]+)'
                            r'(|\|[^>]+)>',
                    help=('regular expresion for working'
-                         'which have simbolic groups named "name" & "url"')),
+                         ' which have simbolic groups named "name" & "url"')),
             Option('destination_directory',
                    action=lambda x: pathlib.Path().joinpath(x),
                    default='./download',
@@ -183,9 +183,9 @@ class Download(Action):
                    default=60.0,
                    type=float,
                    help=('interval in seconds'
-                         'between download progress reports')),
+                         ' between download progress reports')),
             Option('speedmeter_size',
                    default=100,
                    type=int,
                    help=('number of data chunks'
-                         'for download speed measurement')))
+                         ' for download speed measurement')))
