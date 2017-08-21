@@ -123,11 +123,13 @@ class Download(Action):
                 if match:
                     name = match.group('name')
                     url = match.group('url')
-                    self._logger.info('name: {0}'.format(name))
-                    self._logger.info('url: {0}'.format(url))
-                    # create process
-                    process = DownloadReport(
+                    self._logger.info('detect: name={0}, url={1}'.format(
                                 name,
+                                url))
+                    # create process
+                    path = self.config.destination_directory.joinpath(name)
+                    process = DownloadReport(
+                                path,
                                 url,
                                 channel,
                                 logger=self._logger.getChild('report'))
@@ -157,4 +159,8 @@ class Download(Action):
                            r'<(?P<url>https?://[\w/:%#\$&\?\(\)~\.=\+\-]+)'
                            r'(|\|[^>]+)>',
                    help=('regular expresion for working'
-                         'which have simbolic groups named "name" & "url"')))
+                         'which have simbolic groups named "name" & "url"')),
+            Option('destination_directory',
+                   action=lambda x: pathlib.Path().joinpath(x),
+                   default='./download',
+                   help='directory where files are saved'))
