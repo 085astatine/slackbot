@@ -119,6 +119,14 @@ class DownloadObserver(object):
     def is_finished(self) -> bool:
         return self._is_finished
 
+    @property
+    def path(self) -> pathlib.Path:
+        return self._path
+
+    @property
+    def url(self) -> str:
+        return self._url
+
     def _receive_start(
                 self,
                 temp_file_path: pathlib.Path,
