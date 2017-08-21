@@ -68,8 +68,10 @@ class DownloadReport(Action, DownloadObserver):
                     format_bytes(progress.download_speed)))
         message.append('in {0}'.format(
                     str(datetime.timedelta(seconds=progress.elapsed_time))))
-        message.append('(remaining {0})'.format(
-                    str(datetime.timedelta(seconds=progress.remaining_time))))
+        if progress.remaining_time is not None:
+            message.append('(remaining {0})'.format(
+                        str(datetime.timedelta(
+                                    seconds=progress.remaining_time))))
         self.api_call('chat.postMessage',
                       text=' '.join(message),
                       channel=self._channel.id)
