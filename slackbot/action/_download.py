@@ -17,6 +17,7 @@ class DownloadReport(Action, DownloadObserver):
                  path: pathlib.Path,
                  url: str,
                  channel: Channel,
+                 least_size: Optional[int] = None,
                  logger: Optional[logging.Logger] = None) -> None:
         Action.__init__(
                     self,
@@ -31,6 +32,7 @@ class DownloadReport(Action, DownloadObserver):
                     url,
                     self._logger)
         self._channel = channel
+        self._least_size = least_size
 
     def _receive_start(
                 self,
@@ -97,6 +99,19 @@ class DownloadReport(Action, DownloadObserver):
         self.api_call('chat.postMessage',
                       text=' '.join(message),
                       channel=self._channel.id)
+        # file size check
+        if (self._least_size is not None
+                and progress.downloaded_size < self._least_size):
+            message.clear()
+            message.append('[{0}]:delete'.format(save_path.name))
+            message.append('because ({0} < {1})'.format(
+                        format_bytes(progress.downloaded_size),
+                        format_bytes(self._least_size)))
+            self._logger.info(''.join(message))
+            self.api_call('chat.postMessage',
+                          text=' '.join(message),
+                          channel=self._channel.id)
+            save_path.unlink()
 
     def _receive_error(self, error: Exception) -> None:
         DownloadObserver._receive_error(self, error)
@@ -143,12 +158,15 @@ class Download(Action):
                                 path,
                                 url,
                                 channel,
+                                least_size=self.config.least_size,
                                 logger=self._logger.getChild('report'))
                     process.setup(
                                 self._client,
                                 self._info)
                     process.start(
-                                report_interval=10.0)
+                                chunk_size=self.config.chunk_size,
+                                report_interval=self.config.report_interval,
+                                speedmeter_size=self.config.speedmeter_size)
                     self._process_list.append(process)
         # update process list
         finished_process_list = [
@@ -170,8 +188,26 @@ class Download(Action):
                            r'<(?P<url>https?://[\w/:%#\$&\?\(\)~\.=\+\-]+)'
                            r'(|\|[^>]+)>',
                    help=('regular expresion for working'
-                         'which have simbolic groups named "name" & "url"')),
+                         ' which have simbolic groups named "name" & "url"')),
             Option('destination_directory',
                    action=lambda x: pathlib.Path().joinpath(x),
                    default='./download',
-                   help='directory where files are saved'))
+                   help='directory where files are saved'),
+            Option('chunk_size',
+                   default=1024,
+                   type=int,
+                   help='data chank size (byte) for streaming download'),
+            Option('report_interval',
+                   default=60.0,
+                   type=float,
+                   help=('interval in seconds'
+                         ' between download progress reports')),
+            Option('speedmeter_size',
+                   default=100,
+                   type=int,
+                   help=('number of data chunks'
+                         ' for download speed measurement')),
+            Option('least_size',
+                   type=int,
+                   help=('minimun file size'
+                         ' to be concidered successful download')))
