@@ -133,7 +133,7 @@ class DownloadObserver(object):
                 self,
                 temp_file_path: pathlib.Path,
                 response: requests.models.Response) -> None:
-        self._logger.info('[{0}] url: {0}'.format(
+        self._logger.info('[{0}] url: {1}'.format(
                     self._path.name,
                     response.url))
         self._logger.info('[{0}] file size: {1}'.format(
