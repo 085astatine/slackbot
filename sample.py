@@ -24,6 +24,7 @@ if __name__ == '__main__':
     bot = slackbot.create(
                 'Sample',
                 action_dict={'APILogger': slackbot.action.APILogger,
+                             'Download': slackbot.action.Download,
                              'Dummy': DummyAction,
                              'Ping': slackbot.action.Ping},
                 logger=logger)
