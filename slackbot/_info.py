@@ -231,8 +231,9 @@ class InfoUpdate(Action):
                         if logger is not None
                         else logging.getLogger(__name__)))
 
-    def setup(self, client: slackclient.SlackClient) -> None:
-        Action.setup(self, client, None)
+    def initialize(self, client: slackclient.SlackClient) -> None:
+        # client
+        self._client = client
         # auth.test
         auth_test = self.api_call('auth.test')
         bot_id = auth_test['user_id']

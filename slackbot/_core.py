@@ -42,7 +42,7 @@ class Core(Action):
                     if action_dict is not None
                     else dict())
 
-    def setup(self) -> None:
+    def initialize(self) -> None:
         # load token
         token_file = self._args.config.parent.joinpath(self.config.token_file)
         if not token_file.exists():
@@ -54,7 +54,7 @@ class Core(Action):
                           .format(token_file.resolve().as_posix()))
         # client, info
         client = slackclient.SlackClient(token)
-        self._info_update.setup(client)
+        self._info_update.initialize(client)
         Action.setup(self, client, self._info_update.info)
         for action in self._action_dict.values():
             action.setup(self._client, self._info_update.info)

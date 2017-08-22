@@ -28,5 +28,5 @@ if __name__ == '__main__':
                              'Dummy': DummyAction,
                              'Ping': slackbot.action.Ping},
                 logger=logger)
-    bot.setup()
+    bot.initialize()
     bot.run()
