@@ -59,7 +59,7 @@ class Core(Action):
         for action in self._action_dict.values():
             action.setup(self._client, self._info_update.info)
 
-    def run(self) -> None:
+    def start(self) -> None:
         self._logger.info('connecting to the Real Time Messaging API')
         if self._client.rtm_connect():
             self._logger.info(
@@ -72,11 +72,14 @@ class Core(Action):
                 api_list = self._client.rtm_read()
                 for action in self._action_dict.values():
                     action.run(api_list)
-                self._info_update.run(api_list)
+                self.run(api_list)
                 timer.join()
         else:
             self._logger.error(
                         'connecting to the Real Time Messaging API: failed')
+
+    def run(self, api_list: List[Dict[str, Any]]) -> None:
+        self._info_update.run(api_list)
 
     @staticmethod
     def option_list() -> Tuple[Option, ...]:

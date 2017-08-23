@@ -29,4 +29,4 @@ if __name__ == '__main__':
                              'Ping': slackbot.action.Ping},
                 logger=logger)
     bot.initialize()
-    bot.run()
+    bot.start()
