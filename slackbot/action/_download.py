@@ -38,7 +38,7 @@ class DownloadReport(Action, DownloadObserver):
                 self,
                 temp_file_path: pathlib.Path,
                 response: requests.models.Response) -> None:
-        DownloadObserver._receive_start(self, temp_file_path, response)
+        super()._receive_start(temp_file_path, response)
         # post message
         file_size = (
                     int(response.headers.get('Content-Length'))
@@ -53,7 +53,7 @@ class DownloadReport(Action, DownloadObserver):
                       channel=self._channel.id)
 
     def _receive_progress(self, progress: DownloadProgress) -> None:
-        DownloadObserver._receive_progress(self, progress)
+        super()._receive_progress(progress)
         # post message
         format_bytes = DownloadProgress.format_bytes
         message = []
@@ -82,7 +82,7 @@ class DownloadReport(Action, DownloadObserver):
                 self,
                 progress: DownloadProgress,
                 save_path: pathlib.Path) -> None:
-        DownloadObserver._receive_finish(self, progress, save_path)
+        super()._receive_finish(progress, save_path)
         # post message
         format_bytes = DownloadProgress.format_bytes
         message = []
@@ -114,7 +114,7 @@ class DownloadReport(Action, DownloadObserver):
             save_path.unlink()
 
     def _receive_error(self, error: Exception) -> None:
-        DownloadObserver._receive_error(self, error)
+        super()._receive_error(error)
         # post message
         message = '[{0}]:error {1}: {2}'.format(
                     self.path.name,
@@ -130,8 +130,7 @@ class Download(Action):
                  name: str,
                  config: Any,
                  logger: Optional[logging.Logger] = None) -> None:
-        Action.__init__(
-                    self,
+        super().__init__(
                     name,
                     config,
                     (logger
