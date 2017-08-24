@@ -5,6 +5,7 @@
 import logging
 import pathlib
 import time
+from typing import List
 import slackbot.action
 
 
@@ -22,7 +23,7 @@ if __name__ == '__main__':
         url_list = [url for url in fin.read().split('\n') if len(url) != 0]
     print(url_list)
     # create download observer
-    observer_list = []
+    observer_list: List[str] = []
     for i, url in enumerate(url_list):
         observer_list.append(slackbot.action.DownloadObserver(
                     'result{0:02d}'.format(i),
