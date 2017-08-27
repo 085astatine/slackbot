@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-
 import enum
 import logging
 import pprint

@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-
 import collections
 import sys
 from typing import Any, Callable, Dict, Iterable, Optional, Tuple, Type

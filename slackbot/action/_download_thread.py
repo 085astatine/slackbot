@@ -105,10 +105,9 @@ class DownloadObserver(object):
                 path: Union[str, pathlib.Path],
                 url: str,
                 logger: Optional[logging.Logger] = None) -> None:
-        self._path = (
-                    path
-                    if isinstance(path, pathlib.Path)
-                    else pathlib.Path(path))
+        self._path = (path
+                      if isinstance(path, pathlib.Path)
+                      else pathlib.Path(path))
         self._url = url
         if not hasattr(self, '_logger'):
             self._logger = (logger

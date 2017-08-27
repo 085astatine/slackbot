@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-
 import logging
 from typing import Any, Optional, Dict, List, Optional, Tuple, TYPE_CHECKING
 import slackclient
