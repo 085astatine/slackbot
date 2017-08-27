@@ -11,7 +11,7 @@ from .._info import Channel
 from ._download_thread import DownloadObserver, DownloadProgress
 
 
-class DownloadReport(Action, DownloadObserver):
+class DownloadReport(DownloadObserver, Action):
     def __init__(self,
                  path: pathlib.Path,
                  url: str,
