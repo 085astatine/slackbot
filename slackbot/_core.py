@@ -23,8 +23,7 @@ class Core(Action):
                  config: Any,
                  action_dict: Dict[str, Action] = None,
                  logger: Optional[logging.Logger] = None) -> None:
-        Action.__init__(
-                    self,
+        super().__init__(
                     name,
                     config,
                     (logger
@@ -55,7 +54,7 @@ class Core(Action):
         # client, info
         client = slackclient.SlackClient(token)
         self._info_update.initialize(client)
-        Action.setup(self, client, self._info_update.info)
+        super().setup(client, self._info_update.info)
         for action in self._action_dict.values():
             action.setup(self._client, self._info_update.info)
 

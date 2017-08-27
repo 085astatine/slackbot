@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-
 import enum
 import logging
 import pprint
@@ -18,8 +17,7 @@ class APILogger(Action):
                  name: str,
                  config: Any,
                  logger: Optional[logging.Logger] = None) -> None:
-        Action.__init__(
-                    self,
+        super().__init__(
                     name,
                     config,
                     (logger

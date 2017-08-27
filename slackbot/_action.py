@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-
 import logging
 from typing import Any, Optional, Dict, List, Optional, Tuple, TYPE_CHECKING
 import slackclient
@@ -18,10 +17,12 @@ class Action(object):
         self._config = config
         self._client: Optional[slackclient.SlackClient] = None
         self._info: Optional['Info'] = None
-        self._logger = (
-                    logger
-                    if logger is not None
-                    else logging.getLogger(__name__))
+        if not hasattr(self, '_logger'):
+            self._logger = (logger
+                            if logger is not None
+                            else logging.getLogger(__name__))
+        else:
+            assert isinstance(self._logger, logging.Logger)
 
     def setup(self, client: slackclient.SlackClient, info: 'Info') -> None:
         self._client = client

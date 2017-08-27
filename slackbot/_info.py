@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-
 import logging
 from typing import Any, Dict, Iterable, Iterator, List, Optional
 import slackclient
@@ -223,8 +222,7 @@ class InfoUpdate(Action):
                  name: str,
                  config: Any,
                  logger: Optional[logging.Logger] = None) -> None:
-        Action.__init__(
-                    self,
+        super().__init__(
                     name,
                     config,
                     (logger

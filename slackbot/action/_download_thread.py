@@ -8,7 +8,7 @@ import shutil
 import tempfile
 import threading
 import time
-from typing import Optional, Union
+from typing import Deque, Optional, Tuple, Union
 import requests
 
 
@@ -92,7 +92,7 @@ class DownloadProgress(object):
 
 
 class DownloadException(Exception):
-    def __init__(self, response: requests) -> None:
+    def __init__(self, response: requests.models.Response) -> None:
         self._response = response
 
     def __str__(self) -> str:
@@ -105,15 +105,16 @@ class DownloadObserver(object):
                 path: Union[str, pathlib.Path],
                 url: str,
                 logger: Optional[logging.Logger] = None) -> None:
-        self._logger = (
-                    logger
-                    if logger is not None
-                    else logging.getLogger(__name__))
-        self._path = (
-                    path
-                    if isinstance(path, pathlib.Path)
-                    else pathlib.Path(path))
+        self._path = (path
+                      if isinstance(path, pathlib.Path)
+                      else pathlib.Path(path))
         self._url = url
+        if not hasattr(self, '_logger'):
+            self._logger = (logger
+                            if logger is not None
+                            else logging.getLogger(__name__))
+        else:
+            assert isinstance(self._logger, logging.Logger)
         self._is_finished = False
         self._lock = threading.Lock()
 
@@ -155,7 +156,7 @@ class DownloadObserver(object):
                     response.headers))
 
     def _receive_progress(self, progress: DownloadProgress) -> None:
-        format_bytes = progress.__class__.format_bytes
+        format_bytes = DownloadProgress.format_bytes
         message = []
         # progress rate
         if progress.file_size is not None:
@@ -182,7 +183,7 @@ class DownloadObserver(object):
                 self,
                 progress: DownloadProgress,
                 save_path: pathlib.Path) -> None:
-        format_bytes = progress.__class__.format_bytes
+        format_bytes = DownloadProgress.format_bytes
         message = []
         if save_path == self._path:
             message.append('[{0}]:finish'.format(self._path.name))
@@ -207,10 +208,10 @@ class DownloadObserver(object):
             self._is_finished = True
 
 
+_move_file_lock = threading.Lock()
+
+
 class DownloadThread(threading.Thread):
-
-    _lock = threading.Lock()
-
     def __init__(
                 self,
                 observer: DownloadObserver,
@@ -231,7 +232,7 @@ class DownloadThread(threading.Thread):
         with tempfile.NamedTemporaryFile(mode='wb', delete=False) as temp_file:
             temp_file_path = pathlib.Path(temp_file.name)
             # initialize parameter
-            file_size = None
+            file_size: Optional[int] = None
             downloaded_size = 0
             # initialize time
             start_time = time.perf_counter()
@@ -254,7 +255,8 @@ class DownloadThread(threading.Thread):
                              if content_length.isdigit()
                              else None)
                 # initialize speed meter
-                speedmeter = collections.deque(maxlen=self._speedmeter_size)
+                speedmeter: Deque[Tuple[float, float]] = collections.deque(
+                            maxlen=self._speedmeter_size)
                 speedmeter.append((downloaded_size, present_time))
                 # download
                 for data in response.iter_content(chunk_size=self._chunk_size):
@@ -287,7 +289,7 @@ class DownloadThread(threading.Thread):
                 temp_file_path.unlink()
                 return
         # move file
-        with __class__._lock:
+        with _move_file_lock:
             if not self._path.parent.exists():
                 self._path.parent.mkdir(parents=True)
             save_path = self._path
