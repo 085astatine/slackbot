@@ -27,11 +27,11 @@ class APILogger(Action):
     def run(self, api_list: List[Dict[str, Any]]) -> None:
         for api in api_list:
             # ignore check
-            if (not self.config.output_presence_change and
-                    api['type'] == 'presence_change'):
+            if (self.config.ignore_presence_change
+                    and api['type'] == 'presence_change'):
                 continue
-            if (not self.config.output_user_typing and
-                    api['type'] == 'user_typing'):
+            if (self.config.ignore_user_typing
+                    and api['type'] == 'user_typing'):
                 continue
             # raw
             if self.config.mode is Mode.raw:
@@ -49,11 +49,11 @@ class APILogger(Action):
                    default='raw',
                    choices=[mode.name for mode in Mode],
                    help='output format'),
-            Option('output_presence_change',
+            Option('ignore_presence_change',
                    type=bool,
                    default=True,
-                   help='output presence_change'),
-            Option('output_user_typing',
+                   help='ignore "presence_change" api'),
+            Option('ignore_user_typing',
                    type=bool,
                    default=True,
-                   help='output user_typing'))
+                   help='ignore "user_typing" api'))
