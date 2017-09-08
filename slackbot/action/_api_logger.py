@@ -27,6 +27,9 @@ class APILogger(Action):
     def run(self, api_list: List[Dict[str, Any]]) -> None:
         for api in api_list:
             # ignore check
+            if (self.config.ignore_reconnect_url
+                    and api['type'] == 'reconnect_url'):
+                continue
             if (self.config.ignore_presence_change
                     and api['type'] == 'presence_change'):
                 continue
@@ -49,6 +52,10 @@ class APILogger(Action):
                    default='raw',
                    choices=[mode.name for mode in Mode],
                    help='output format'),
+            Option('ignore_reconnect_url',
+                   type=bool,
+                   default=True,
+                   help='ignore "reconnect_url" api'),
             Option('ignore_presence_change',
                    type=bool,
                    default=True,
