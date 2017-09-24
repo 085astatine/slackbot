@@ -19,9 +19,7 @@ class DownloadReport(DownloadObserver, Action):
                  least_size: Optional[int] = None,
                  logger: Optional[logging.Logger] = None) -> None:
         if not hasattr(self, '_logger'):
-            self._logger = (logger
-                            if logger is not None
-                            else logging.getLogger(__name__))
+            self._logger = logger or logging.getLogger(__name__)
         else:
             assert isinstance(self._logger, logging.Logger)
         Action.__init__(
@@ -135,9 +133,7 @@ class Download(Action):
         super().__init__(
                     name,
                     config,
-                    (logger
-                        if logger is not None
-                        else logging.getLogger(__name__)))
+                    logger or logging.getLogger(__name__))
         self._process_list: List[DownloadReport] = []
 
     def run(self, api_list: List[Dict[str, Any]]) -> None:

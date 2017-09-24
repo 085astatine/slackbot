@@ -26,9 +26,7 @@ class Core(Action):
         super().__init__(
                     name,
                     config,
-                    (logger
-                        if logger is not None
-                        else logging.getLogger(__name__)))
+                    logger or logging.getLogger(__name__))
         self._args = args
         self._info_update = InfoUpdate(
                     'InfoUpdate',
@@ -36,10 +34,7 @@ class Core(Action):
                                 'InfoUpdate',
                                 InfoUpdate.option_list()).parse({}),
                     logger.getChild('InfoUpdate'))
-        self._action_dict = (
-                    action_dict
-                    if action_dict is not None
-                    else dict())
+        self._action_dict = action_dict or {}
 
     def initialize(self) -> None:
         # load token

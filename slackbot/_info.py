@@ -225,9 +225,7 @@ class InfoUpdate(Action):
         super().__init__(
                     name,
                     config,
-                    (logger
-                        if logger is not None
-                        else logging.getLogger(__name__)))
+                    logger or logging.getLogger(__name__))
 
     def initialize(self, client: slackclient.SlackClient) -> None:
         # client
