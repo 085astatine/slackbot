@@ -6,33 +6,25 @@ import pathlib
 import re
 from typing import Any, Dict, List, Optional, Tuple
 import requests
+import slackclient
 from .. import Action, Option
 from .._info import Channel
 from ._download_thread import DownloadObserver, DownloadProgress
 
 
-class DownloadReport(DownloadObserver, Action):
+class DownloadReport(DownloadObserver):
     def __init__(self,
+                 client: slackclient.SlackClient,
                  path: pathlib.Path,
                  url: str,
                  channel: Channel,
                  least_size: Optional[int] = None,
                  logger: Optional[logging.Logger] = None) -> None:
-        if not hasattr(self, '_logger'):
-            self._logger = (logger
-                            if logger is not None
-                            else logging.getLogger(__name__))
-        else:
-            assert isinstance(self._logger, logging.Logger)
-        Action.__init__(
-                    self,
-                    None,
-                    None)
-        DownloadObserver.__init__(
-                    self,
+        super().__init__(
                     path,
                     url,
-                    self._logger)
+                    logger or logging.getLogger(__name__))
+        self._client = client
         self._channel = channel
         self._least_size = least_size
 
@@ -50,9 +42,7 @@ class DownloadReport(DownloadObserver, Action):
                     self.path.name,
                     response.url,
                     DownloadProgress.format_bytes(file_size))
-        self.api_call('chat.postMessage',
-                      text=message,
-                      channel=self._channel.id)
+        self._post_message(message)
 
     def _receive_progress(self, progress: DownloadProgress) -> None:
         super()._receive_progress(progress)
@@ -76,9 +66,7 @@ class DownloadReport(DownloadObserver, Action):
             message.append('(remaining {0})'.format(
                         str(datetime.timedelta(
                                     seconds=progress.remaining_time))))
-        self.api_call('chat.postMessage',
-                      text=' '.join(message),
-                      channel=self._channel.id)
+        self._post_message(' '.join(message))
 
     def _receive_finish(
                 self,
@@ -98,9 +86,7 @@ class DownloadReport(DownloadObserver, Action):
                     format_bytes(progress.downloaded_size),
                     format_bytes(progress.average_download_speed),
                     str(datetime.timedelta(seconds=progress.elapsed_time))))
-        self.api_call('chat.postMessage',
-                      text=' '.join(message),
-                      channel=self._channel.id)
+        self._post_message(' '.join(message))
         # file size check
         if (self._least_size is not None
                 and progress.downloaded_size < self._least_size):
@@ -109,10 +95,8 @@ class DownloadReport(DownloadObserver, Action):
             message.append('because ({0} < {1})'.format(
                         format_bytes(progress.downloaded_size),
                         format_bytes(self._least_size)))
-            self._logger.info(''.join(message))
-            self.api_call('chat.postMessage',
-                          text=' '.join(message),
-                          channel=self._channel.id)
+            self._logger.info(' '.join(message))
+            self._post_message(' '.join(message))
             save_path.unlink()
 
     def _receive_error(self, error: Exception) -> None:
@@ -122,9 +106,19 @@ class DownloadReport(DownloadObserver, Action):
                     self.path.name,
                     error.__class__.__name__,
                     str(error))
-        self.api_call('chat.postMessage',
-                      text=message,
-                      channel=self._channel.id)
+        self._post_message(message)
+
+    def _post_message(self, message: str) -> None:
+        params: Dict[str, Any] = {
+                    'text': message,
+                    'channel': self._channel.id}
+        self._logger.debug('params: {0}'.format(params))
+        response = self._client.api_call('chat.postMessage', **params)
+        self._logger.log(
+                    (logging.DEBUG
+                        if response.get('ok', False)
+                        else logging.ERROR),
+                    'response: {0}'.format(response))
 
 
 class Download(Action):
@@ -135,9 +129,7 @@ class Download(Action):
         super().__init__(
                     name,
                     config,
-                    (logger
-                        if logger is not None
-                        else logging.getLogger(__name__)))
+                    logger or logging.getLogger(__name__))
         self._process_list: List[DownloadReport] = []
 
     def run(self, api_list: List[Dict[str, Any]]) -> None:
@@ -156,14 +148,12 @@ class Download(Action):
                     # create process
                     path = self.config.destination_directory.joinpath(name)
                     process = DownloadReport(
+                                self._client,
                                 path,
                                 url,
                                 channel,
                                 least_size=self.config.least_size,
                                 logger=self._logger.getChild('report'))
-                    process.setup(
-                                self._client,
-                                self._info)
                     process.start(
                                 chunk_size=self.config.chunk_size,
                                 report_interval=self.config.report_interval,

@@ -110,9 +110,7 @@ class DownloadObserver(object):
                       else pathlib.Path(path))
         self._url = url
         if not hasattr(self, '_logger'):
-            self._logger = (logger
-                            if logger is not None
-                            else logging.getLogger(__name__))
+            self._logger = logger or logging.getLogger(__name__)
         else:
             assert isinstance(self._logger, logging.Logger)
         self._is_finished = False

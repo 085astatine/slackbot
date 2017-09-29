@@ -14,9 +14,7 @@ class Ping(Action):
         super().__init__(
                     name,
                     config,
-                    (logger
-                        if logger is not None
-                        else logging.getLogger(__name__)))
+                    logger or logging.getLogger(__name__))
 
     def run(self, api_list: List[Dict[str, Any]]) -> None:
         for api in api_list:
