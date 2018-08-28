@@ -227,7 +227,10 @@ class DownloadThread(threading.Thread):
         self._speedmeter_size = speedmeter_size
 
     def run(self) -> None:
-        with tempfile.NamedTemporaryFile(mode='wb', delete=False) as temp_file:
+        with tempfile.NamedTemporaryFile(
+                        mode='wb',
+                        delete=False,
+                        dir=self._path.parent.as_posix()) as temp_file:
             temp_file_path = pathlib.Path(temp_file.name)
             # initialize parameter
             file_size: Optional[int] = None
