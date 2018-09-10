@@ -158,7 +158,7 @@ class Download(Action):
                                 chunk_size=self.config.chunk_size,
                                 report_interval=self.config.report_interval,
                                 speedmeter_size=self.config.speedmeter_size,
-                                permission=0o644)
+                                permission=self.config.file_permission)
                     self._process_list.append(process)
         # update process list
         finished_process_list = [
@@ -169,6 +169,13 @@ class Download(Action):
 
     @staticmethod
     def option_list() -> Tuple[Option, ...]:
+        # parse permission (format 0oXXX)
+        def read_permission(value: str) -> Optional[int]:
+            match = re.match('0o(?P<permission>[0-7]{3})', value)
+            if match:
+                return int(match.group('permission'), base=8)
+            return None
+
         return (
             Option('channel',
                    action=lambda x: [x] if isinstance(x, str) else x,
@@ -202,4 +209,8 @@ class Download(Action):
             Option('least_size',
                    type=int,
                    help=('minimun file size'
-                         ' to be concidered successful download')))
+                         ' to be concidered successful download')),
+            Option('file_permission',
+                   action=read_permission,
+                   default='0o644',
+                   help='downloaded file permission (format: 0oXXX)'))
