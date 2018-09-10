@@ -157,7 +157,8 @@ class Download(Action):
                     process.start(
                                 chunk_size=self.config.chunk_size,
                                 report_interval=self.config.report_interval,
-                                speedmeter_size=self.config.speedmeter_size)
+                                speedmeter_size=self.config.speedmeter_size,
+                                permission=0o644)
                     self._process_list.append(process)
         # update process list
         finished_process_list = [

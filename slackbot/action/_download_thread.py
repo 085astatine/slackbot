@@ -217,7 +217,8 @@ class DownloadThread(threading.Thread):
                 url: str,
                 chunk_size: int = 1024,
                 report_interval: float = 5.0,
-                speedmeter_size: int = 100) -> None:
+                speedmeter_size: int = 100,
+                permission: Optional[int] = None) -> None:
         threading.Thread.__init__(self)
         self._observer = observer
         self._path = path
@@ -225,6 +226,7 @@ class DownloadThread(threading.Thread):
         self._chunk_size = chunk_size
         self._report_interval = report_interval
         self._speedmeter_size = speedmeter_size
+        self._permission = permission
 
     def run(self) -> None:
         with tempfile.NamedTemporaryFile(
@@ -302,6 +304,9 @@ class DownloadThread(threading.Thread):
                                     .format(self._path, index))
                     index += 1
             shutil.move(temp_file_path.as_posix(), save_path.as_posix())
+        # chmod
+        if self._permission is not None:
+            save_path.chmod(self._permission)
         # finish report
         progress = DownloadProgress(
                     file_size=file_size,
