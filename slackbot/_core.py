@@ -13,7 +13,7 @@ import slackclient
 import yaml
 from ._action import Action
 from ._config import ConfigParser, Option
-from ._info import InfoUpdate
+from ._team import InfoUpdate
 
 
 class Core(Action):

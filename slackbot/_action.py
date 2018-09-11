@@ -5,7 +5,7 @@ from typing import Any, Optional, Dict, List, Optional, Tuple, TYPE_CHECKING
 import slackclient
 from ._config import Option
 if TYPE_CHECKING:
-    from ._info import Info
+    from ._team import Info
 
 
 class Action(object):

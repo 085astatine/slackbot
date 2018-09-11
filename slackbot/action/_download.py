@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import requests
 import slackclient
 from .. import Action, Option
-from .._info import Channel
+from .._team import Channel
 from ._download_thread import DownloadObserver, DownloadProgress
 
 
