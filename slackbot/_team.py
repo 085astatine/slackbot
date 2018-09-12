@@ -6,26 +6,6 @@ import slackclient
 from ._action import Action
 
 
-class Team(object):
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self._data = data
-
-    def get(self, key: str) -> Any:
-        return self._data[key]
-
-    def update(self, data: Dict[str, Any]) -> None:
-        self._data.clear()
-        self._data.update(data)
-
-    @property
-    def id(self) -> str:
-        return self._data['id']
-
-    @property
-    def name(self) -> str:
-        return self._data['name']
-
-
 class User(object):
     def __init__(self, data: Dict[str, Any]) -> None:
         self._data = data
@@ -185,20 +165,24 @@ class GroupList(object):
 
 class Info(object):
     def __init__(self,
-                 team: Team,
+                 team_info: Dict[str, str],
                  user_list: UserList,
                  channel_list: ChannelList,
                  group_list: GroupList,
                  bot_id: str) -> None:
-        self._team = team
+        self._team_info = team_info
         self._user_list = user_list
         self._channel_list = channel_list
         self._group_list = group_list
         self._bot_id = bot_id
 
     @property
-    def team(self) -> Team:
-        return self._team
+    def team_id(self) -> str:
+        return self._team_info['id']
+
+    @property
+    def team_name(self) -> str:
+        return self._team_info['name']
 
     @property
     def user_list(self) -> UserList:
@@ -233,10 +217,10 @@ class InfoUpdate(Action):
         # auth.test
         auth_test = self.api_call('auth.test')
         bot_id = auth_test['user_id']
-        # team
-        team = Team(self.api_call('team.info')['team'])
-        self._logger.debug("team id: '{0}'".format(team.id))
-        self._logger.debug("team name: '{0}'".format(team.name))
+        # team info
+        team_info = self.api_call('team.info')['team']
+        self._logger.debug("team id: '{0}'".format(team_info['id']))
+        self._logger.debug("team name: '{0}'".format(team_info['name']))
         # user list
         user_list = UserList(
                     User(user_object)
@@ -251,7 +235,12 @@ class InfoUpdate(Action):
                     Group(group_object, user_list)
                     for group_object in self.api_call('groups.list')['groups'])
         # info
-        self._info = Info(team, user_list, channel_list, group_list, bot_id)
+        self._info = Info(
+                team_info,
+                user_list,
+                channel_list,
+                group_list,
+                bot_id)
 
     def run(self, api_list: List[Dict[str, Any]]) -> None:
         is_team_updated = False
@@ -307,7 +296,7 @@ class InfoUpdate(Action):
         # update team
         if is_team_updated:
             self._logger.info('update team')
-            self.info.team.update(self.api_call('team.info')['team'])
+            self.info._team_info.update(self.api_call('team.info')['team'])
         # update channel
         for channel_id in updated_channel_id_list:
             channel = self.info.channel_list.id_search(channel_id)
