@@ -19,16 +19,16 @@ class Ping(Action):
     def run(self, api_list: List[Dict[str, Any]]) -> None:
         for api in api_list:
             if api['type'] == 'message' and 'subtype' not in api:
-                channel = self.info.channel_list.id_search(api['channel'])
+                channel = self.team.channel_list.id_search(api['channel'])
                 if channel is None or channel.name not in self.config.channel:
                     continue
                 pattern = r'<@(?P<to>[^>]+)>:?\s+(?P<text>.+)'
                 match = re.match(pattern, api['text'])
                 if (match and
-                        match.group('to') == self.info.bot.id and
+                        match.group('to') == self.team.bot.id and
                         unescape_text(match.group('text').strip())
                         == self.config.word):
-                    user = self.info.user_list.id_search(api['user'])
+                    user = self.team.user_list.id_search(api['user'])
                     if user is None:
                         self._logger.error("unknown user id '{0}'"
                                            .format(api['user']))

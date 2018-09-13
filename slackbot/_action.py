@@ -5,7 +5,7 @@ from typing import Any, Optional, Dict, List, Optional, Tuple, TYPE_CHECKING
 import slackclient
 from ._config import Option
 if TYPE_CHECKING:
-    from ._info import Info
+    from ._team import Team
 
 
 class Action(object):
@@ -16,15 +16,15 @@ class Action(object):
         self._name = name
         self._config = config
         self._client: Optional[slackclient.SlackClient] = None
-        self._info: Optional['Info'] = None
+        self._team: Optional['Team'] = None
         if not hasattr(self, '_logger'):
             self._logger = logger or logging.getLogger(__name__)
         else:
             assert isinstance(self._logger, logging.Logger)
 
-    def setup(self, client: slackclient.SlackClient, info: 'Info') -> None:
+    def setup(self, client: slackclient.SlackClient, team: 'Team') -> None:
         self._client = client
-        self._info = info
+        self._team = team
 
     def run(self, api_list: List[Dict[str, Any]]) -> None:
         pass
@@ -48,8 +48,8 @@ class Action(object):
         return self._config
 
     @property
-    def info(self) -> 'Info':
-        return self._info
+    def team(self) -> 'Team':
+        return self._team
 
     @staticmethod
     def option_list() -> Tuple[Option, ...]:
