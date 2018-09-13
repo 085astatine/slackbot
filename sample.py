@@ -17,8 +17,9 @@ if __name__ == '__main__':
     logger.setLevel(logging.INFO)
     handler = logging.StreamHandler()
     handler.formatter = logging.Formatter(
-                fmt='%(name)s::%(levelname)s::%(message)s')
+                fmt='[%(levelname)s] %(name)s: %(message)s')
     logger.addHandler(handler)
+    logger.propagate = False
 
     bot = slackbot.create(
                 'Sample',
