@@ -13,7 +13,7 @@ import slackclient
 import yaml
 from ._action import Action
 from ._config import ConfigParser, Option
-from ._team import InfoUpdate
+from ._team import TeamUpdate
 
 
 class Core(Action):
@@ -28,12 +28,12 @@ class Core(Action):
                     config,
                     logger or logging.getLogger(__name__))
         self._args = args
-        self._info_update = InfoUpdate(
-                    'InfoUpdate',
+        self._team_update = TeamUpdate(
+                    'TeamUpdate',
                     ConfigParser(
-                                'InfoUpdate',
-                                InfoUpdate.option_list()).parse({}),
-                    logger.getChild('InfoUpdate'))
+                        'TeamUpdate',
+                        TeamUpdate.option_list()).parse({}),
+                    logger.getChild('TeamUpdate'))
         self._action_dict = action_dict or {}
 
     def initialize(self) -> None:
@@ -46,12 +46,12 @@ class Core(Action):
             token = fin.read().strip()
         self._logger.info("token file '{0}' has been loaded"
                           .format(token_file.resolve().as_posix()))
-        # client, info
+        # client, team
         client = slackclient.SlackClient(token)
-        self._info_update.initialize(client)
-        super().setup(client, self._info_update.info)
+        self._team_update.initialize(client)
+        super().setup(client, self._team_update.team)
         for action in self._action_dict.values():
-            action.setup(self._client, self._info_update.info)
+            action.setup(self._client, self._team_update.team)
 
     def start(self) -> None:
         self._logger.info('connecting to the Real Time Messaging API')
@@ -73,7 +73,7 @@ class Core(Action):
                         'connecting to the Real Time Messaging API: failed')
 
     def run(self, api_list: List[Dict[str, Any]]) -> None:
-        self._info_update.run(api_list)
+        self._team_update.run(api_list)
 
     @staticmethod
     def option_list() -> Tuple[Option, ...]:

@@ -135,7 +135,7 @@ class Download(Action):
     def run(self, api_list: List[Dict[str, Any]]) -> None:
         for api in api_list:
             if api['type'] == 'message' and 'subtype' not in api:
-                channel = self.info.channel_list.id_search(api['channel'])
+                channel = self.team.channel_list.id_search(api['channel'])
                 if channel is None or channel.name not in self.config.channel:
                     continue
                 match = self.config.pattern.match(api['text'].strip())
