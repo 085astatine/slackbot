@@ -229,6 +229,10 @@ class DownloadThread(threading.Thread):
         self._permission = permission
 
     def run(self) -> None:
+        # mkdir
+        if not self._path.parent.exists():
+            self._path.parent.mkdir(parents=True)
+        # download
         with tempfile.NamedTemporaryFile(
                         mode='wb',
                         delete=False,
@@ -293,8 +297,6 @@ class DownloadThread(threading.Thread):
                 return
         # move file
         with _move_file_lock:
-            if not self._path.parent.exists():
-                self._path.parent.mkdir(parents=True)
             save_path = self._path
             if save_path.exists():
                 index = 0
