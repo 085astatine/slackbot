@@ -2,7 +2,7 @@
 
 import logging
 from typing import Any, Optional, Dict, List, Optional, Tuple, TYPE_CHECKING
-import slackclient
+from ._client import Client
 from ._config import Option
 if TYPE_CHECKING:
     from ._team import Team
@@ -13,31 +13,26 @@ class Action(object):
                  name: str,
                  config: Any,
                  logger: Optional[logging.Logger] = None) -> None:
-        self._name = name
-        self._config = config
-        self._client: Optional[slackclient.SlackClient] = None
-        self._team: Optional['Team'] = None
+        # logger
         if not hasattr(self, '_logger'):
             self._logger = logger or logging.getLogger(__name__)
         else:
             assert isinstance(self._logger, logging.Logger)
+        # parameter
+        self._name = name
+        self._config = config
+        self._client: Client = Client(logger=self._logger)
+        self._team: Optional['Team'] = None
 
-    def setup(self, client: slackclient.SlackClient, team: 'Team') -> None:
-        self._client = client
+    def setup(self, token: str, team: 'Team') -> None:
+        self._client.setup(token)
         self._team = team
 
     def run(self, api_list: List[Dict[str, Any]]) -> None:
         pass
 
     def api_call(self, method: str, **kwargs):
-        self._logger.debug("call API '{0}': {1}".format(method, kwargs))
-        result = self._client.api_call(method, **kwargs)
-        self._logger.log(
-                    (logging.DEBUG
-                        if result.get('ok', False)
-                        else logging.ERROR),
-                    'result: {0}'.format(result))
-        return result
+        return self._client.api_call(method, **kwargs)
 
     @property
     def name(self) -> str:

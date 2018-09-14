@@ -2,7 +2,6 @@
 
 import logging
 from typing import Any, Dict, Iterable, Iterator, List, Optional
-import slackclient
 from ._action import Action
 
 
@@ -211,9 +210,9 @@ class TeamUpdate(Action):
                     config,
                     logger or logging.getLogger(__name__))
 
-    def initialize(self, client: slackclient.SlackClient) -> None:
+    def initialize(self, token: str) -> None:
         # client
-        self._client = client
+        self._client.setup(token)
         # auth.test
         auth_test = self.api_call('auth.test')
         bot_id = auth_test['user_id']

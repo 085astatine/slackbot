@@ -6,15 +6,15 @@ import pathlib
 import re
 from typing import Any, Dict, List, Optional, Tuple
 import requests
-import slackclient
 from .. import Action, Option
+from .._client import Client
 from .._team import Channel
 from ._download_thread import DownloadObserver, DownloadProgress
 
 
 class DownloadReport(DownloadObserver):
     def __init__(self,
-                 client: slackclient.SlackClient,
+                 client: Client,
                  path: pathlib.Path,
                  url: str,
                  channel: Channel,

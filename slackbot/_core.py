@@ -9,7 +9,6 @@ import sys
 import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple, Type
-import slackclient
 import yaml
 from ._action import Action
 from ._config import ConfigParser, Option
@@ -47,11 +46,11 @@ class Core(Action):
         self._logger.info("token file '{0}' has been loaded"
                           .format(token_file.resolve().as_posix()))
         # client, team
-        client = slackclient.SlackClient(token)
-        self._team_update.initialize(client)
-        super().setup(client, self._team_update.team)
+        self._client.setup(token)
+        self._team_update.initialize(token)
+        self._team = self._team_update.team
         for action in self._action_dict.values():
-            action.setup(self._client, self._team_update.team)
+            action.setup(token, self._team_update.team)
 
     def start(self) -> None:
         self._logger.info('connecting to the Real Time Messaging API')
