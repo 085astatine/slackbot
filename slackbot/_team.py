@@ -84,8 +84,10 @@ class Group(object):
 
 
 class UserList(object):
-    def __init__(self, user_list: Iterable[User]) -> None:
-        self._list = list(user_list)
+    def __init__(
+            self,
+            user_list: Optional[Iterable[User]] = None) -> None:
+        self._list = list(user_list) if user_list is not None else []
 
     def __iter__(self) -> Iterator[User]:
         return self._list.__iter__()
@@ -109,8 +111,10 @@ class UserList(object):
 
 
 class ChannelList(object):
-    def __init__(self, channel_list: Iterable[Channel]) -> None:
-        self._list = list(channel_list)
+    def __init__(
+            self,
+            channel_list: Optional[Iterable[Channel]] = None) -> None:
+        self._list = list(channel_list) if channel_list is not None else []
 
     def __iter__(self) -> Iterator[Channel]:
         return self._list.__iter__()
@@ -137,8 +141,10 @@ class ChannelList(object):
 
 
 class GroupList(object):
-    def __init__(self, group_list: Iterable[Group]) -> None:
-        self._list = list(group_list)
+    def __init__(
+            self,
+            group_list: Optional[Iterable[Group]] = None) -> None:
+        self._list = list(group_list) if group_list is not None else []
 
     def __iter__(self) -> Iterator[Group]:
         return self._list.__iter__()
