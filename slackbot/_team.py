@@ -3,6 +3,7 @@
 import logging
 from typing import Any, Dict, Iterable, Iterator, List, Optional
 from ._action import Action
+from ._client import Client
 
 
 class User(object):
@@ -167,6 +168,50 @@ class GroupList(object):
         if group is not None:
             self._list.remove(group)
 
+
+class _Team:
+    def __init__(self) -> None:
+        self.url: Optional[str] = None
+        self.bot_id: Optional[str] = None
+        self._team: Dict[str, Any] = {}
+        self.user_list = UserList()
+        self.channel_list = ChannelList()
+        self.group_list = GroupList()
+
+    def reset(self, client: Client) -> None:
+        # auth.test
+        auth_test = client.api_call('auth.test')
+        self.url = auth_test['url']
+        self.bot_id = auth_test['user_id']
+        # team info
+        self._team = client.api_call('team.info')['team']
+        # users.list
+        self.user_list = UserList(
+                    User(user_object)
+                    for user_object
+                    in client.api_call('users.list')['members'])
+        # channels.list
+        self.channel_list = ChannelList(
+                    Channel(channel_object, self.user_list)
+                    for channel_object
+                    in client.api_call('channels.list')['channels'])
+        # groups.list
+        self.group_list = GroupList(
+                    Group(group_object, self.user_list)
+                    for group_object
+                    in client.api_call('groups.list')['groups'])
+
+    @property
+    def team_id(self) -> str:
+        return self._team['id']
+
+    @property
+    def team_name(self) -> str:
+        return self._team['name']
+
+    @property
+    def team_domain(self) -> str:
+        return self._team['domain']
 
 class Team(object):
     def __init__(self,
