@@ -6,6 +6,7 @@ import slackclient
 
 
 _client: Dict[Optional[str], slackclient.SlackClient] = {}
+_ref_count: Dict[Optional[str], int] = {}
 
 
 class Client:
@@ -20,6 +21,15 @@ class Client:
         # register client
         if self._key not in _client:
             _client[self._key] = None
+            _ref_count[self._key] = 1
+        else:
+            _ref_count[self._key] += 1
+
+    def __del__(self):
+        _ref_count[self._key] -= 1
+        if _ref_count[self._key] <= 0:
+            del _client[self._key]
+            del _ref_count[self._key]
 
     def setup(self, token: str) -> None:
         if _client[self._key] is None:
