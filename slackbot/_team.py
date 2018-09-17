@@ -254,6 +254,78 @@ class _Team:
                         in client.api_call('groups.list')['groups']),
                     key=self._key)
 
+    def update(
+            self,
+            client: Client,
+            api_list: List[Dict[str, Any]]) -> None:
+        is_team_updated = False
+        updated_channel_id_list = set()
+        updated_group_id_list = set()
+        for api in api_list:
+            api_type = api['type']
+            # user_change
+            if api_type == 'user_change':
+                self.user_list.update(api['user'])
+            # team join
+            elif api_type == 'team_join':
+                self.user_list.update(api['user'])
+            # member_joined_channel, member_left_channel
+            elif api_type in ('member_joined_channel', 'member_left_channel'):
+                channel_type = api['channel_type']
+                if channel_type == 'C':
+                    updated_channel_id_list.add(api['channel'])
+                elif channel_type == 'G':
+                    updated_group_id_list.add(api['channel'])
+            # channel_archive, channel_unarchive
+            elif api_type in ('channel_archive', 'channel_unarchive'):
+                updated_channel_id_list.add(api['channel'])
+            # channel_rename
+            elif api_type == 'channel_rename':
+                updated_channel_id_list.add(api['channel']['id'])
+            # channel_created
+            elif api_type == 'channel_created':
+                updated_channel_id_list.add(api['channel']['id'])
+            # channel_deleted
+            elif api_type == 'channel_deleted':
+                self.channel_list.remove(api['channel'])
+            # group_archive, group_unarchive
+            elif api_type in ('group_archive', 'group_unarchive'):
+                updated_group_id_list.add(api['group'])
+            # group_rename
+            elif api_type == 'group_rename':
+                updated_group_id_list.add(api['group']['id'])
+            # team_domain_change, team_rename
+            elif api_type in ('team_domain_change', 'team_rename'):
+                is_team_updated = True
+            # message with subtype
+            elif api_type == 'message' and 'subtype' in api:
+                subtype = api['subtype']
+                # channel_purpose, channel_topic
+                if subtype in ('channel_purpose', 'channel_topic'):
+                    updated_channel_id_list.add(api['channel'])
+                # group_purpose, group_topic
+                elif subtype in ('group_purpose', 'group_topic'):
+                    updated_group_id_list.add(api['channel'])
+        # update team
+        if is_team_updated:
+            team_info = client.api_call('team.info')
+            if team_info.get('ok', False):
+                self._team = team_info['team']
+        # update channel
+        for channel_id in updated_channel_id_list:
+            channel_data = client.api_call(
+                    'channels.info',
+                    channel=channel_id)
+            if channel_data.get('ok', False):
+                self.channel_list.update(channel_data['channel'])
+        # update group
+        for group_id in updated_group_id_list:
+            group_data = client.api_call(
+                    'groups.info',
+                    group=group_id)
+            if group_data.get('ok', False):
+                self.group_list.update(group_data['group'])
+
     @property
     def team_id(self) -> str:
         return self._team['id']
