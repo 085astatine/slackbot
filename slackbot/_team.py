@@ -6,6 +6,9 @@ from ._action import Action
 from ._client import Client
 
 
+_team: Dict[Optional[str], '_Team'] = {}
+
+
 class User(object):
     def __init__(self, data: Dict[str, Any]) -> None:
         self._data = data
@@ -213,42 +216,48 @@ class _Team:
     def team_domain(self) -> str:
         return self._team['domain']
 
-class Team(object):
-    def __init__(self,
-                 team_info: Dict[str, str],
-                 user_list: UserList,
-                 channel_list: ChannelList,
-                 group_list: GroupList,
-                 bot_id: str) -> None:
-        self._team_info = team_info
-        self._user_list = user_list
-        self._channel_list = channel_list
-        self._group_list = group_list
-        self._bot_id = bot_id
+
+class Team:
+    def __init__(
+            self,
+            key: Optional[str] = None,
+            logger: Optional[logging.Logger] = None) -> None:
+        self._key = key
+        self._logger = logger or logging.getLogger(__name__)
+        if self._key not in _team:
+            _team[self._key] = _Team()
 
     @property
     def team_id(self) -> str:
-        return self._team_info['id']
+        return _team[self._key].team_id
 
     @property
     def team_name(self) -> str:
-        return self._team_info['name']
+        return _team[self._key].team_name
+
+    @property
+    def team_domain(self) -> str:
+        return _team[self._key].team_domain
 
     @property
     def user_list(self) -> UserList:
-        return self._user_list
+        return _team[self._key].user_list
 
     @property
     def channel_list(self) -> ChannelList:
-        return self._channel_list
+        return _team[self._key].channel_list
 
     @property
     def group_list(self) -> GroupList:
-        return self._group_list
+        return _team[self._key].group_list
 
     @property
     def bot(self) -> Optional[User]:
-        return self._user_list.id_search(self._bot_id)
+        bot_id = _team[self._key].bot_id
+        if bot_id is not None:
+            return self.user_list.id_search(bot_id)
+        else:
+            return None
 
 
 class TeamUpdate(Action):
