@@ -10,8 +10,12 @@ _team: Dict[Optional[str], '_Team'] = {}
 
 
 class User(object):
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(
+            self,
+            data: Dict[str, Any],
+            key: Optional[str] = None) -> None:
         self._data = data
+        self._key = key
 
     def get(self, key: str) -> Any:
         return self._data[key]
@@ -30,9 +34,12 @@ class User(object):
 
 
 class Channel(object):
-    def __init__(self, data: Dict[str, Any], user_list: 'UserList') -> None:
+    def __init__(
+            self,
+            data: Dict[str, Any],
+            key: Optional[str] = None) -> None:
         self._data = data
-        self._user_list = user_list
+        self._key = key
 
     def get(self, key: str) -> Any:
         return self._data[key]
@@ -51,7 +58,10 @@ class Channel(object):
 
     @property
     def members(self) -> List[User]:
-        return list(map(self._user_list.id_search, self._data['members']))
+        return list(filter(
+                None,
+                map(_team[self._key].user_list.id_search,
+                    self._data['members'])))
 
     @property
     def is_archived(self) -> bool:
@@ -59,9 +69,12 @@ class Channel(object):
 
 
 class Group(object):
-    def __init__(self, data: Dict[str, Any], user_list: 'UserList') -> None:
+    def __init__(
+            self,
+            data: Dict[str, Any],
+            key: Optional[str] = None) -> None:
         self._data = data
-        self._user_list = user_list
+        self._key = key
 
     def get(self, key: str) -> Any:
         return self._data[key]
@@ -80,7 +93,10 @@ class Group(object):
 
     @property
     def members(self) -> List[User]:
-        return list(map(self._user_list.id_search, self._data['members']))
+        return list(filter(
+                None,
+                map(_team[self._key].user_list.id_search,
+                    self._data['members'])))
 
     @property
     def is_archived(self) -> bool:
@@ -90,8 +106,10 @@ class Group(object):
 class UserList(object):
     def __init__(
             self,
-            user_list: Optional[Iterable[User]] = None) -> None:
+            user_list: Optional[Iterable[User]] = None,
+            key: Optional[str] = None) -> None:
         self._list = list(user_list) if user_list is not None else []
+        self._key = key
 
     def __iter__(self) -> Iterator[User]:
         return self._list.__iter__()
@@ -117,8 +135,10 @@ class UserList(object):
 class ChannelList(object):
     def __init__(
             self,
-            channel_list: Optional[Iterable[Channel]] = None) -> None:
+            channel_list: Optional[Iterable[Channel]] = None,
+            key: Optional[str] = None) -> None:
         self._list = list(channel_list) if channel_list is not None else []
+        self._key = key
 
     def __iter__(self) -> Iterator[Channel]:
         return self._list.__iter__()
@@ -147,8 +167,10 @@ class ChannelList(object):
 class GroupList(object):
     def __init__(
             self,
-            group_list: Optional[Iterable[Group]] = None) -> None:
+            group_list: Optional[Iterable[Group]] = None,
+            key: Optional[str] = None) -> None:
         self._list = list(group_list) if group_list is not None else []
+        self._key = key
 
     def __iter__(self) -> Iterator[Group]:
         return self._list.__iter__()
@@ -173,13 +195,14 @@ class GroupList(object):
 
 
 class _Team:
-    def __init__(self) -> None:
+    def __init__(self, key: Optional[str] = None) -> None:
+        self._key = key
         self.url: Optional[str] = None
         self.bot_id: Optional[str] = None
         self._team: Dict[str, Any] = {}
-        self.user_list = UserList()
-        self.channel_list = ChannelList()
-        self.group_list = GroupList()
+        self.user_list = UserList(key=self._key)
+        self.channel_list = ChannelList(key=self._key)
+        self.group_list = GroupList(key=self._key)
 
     def reset(self, client: Client) -> None:
         # auth.test
@@ -190,19 +213,22 @@ class _Team:
         self._team = client.api_call('team.info')['team']
         # users.list
         self.user_list = UserList(
-                    User(user_object)
-                    for user_object
-                    in client.api_call('users.list')['members'])
+                    (User(user_data, key=self._key)
+                        for user_data
+                        in client.api_call('users.list')['members']),
+                    key=self._key)
         # channels.list
         self.channel_list = ChannelList(
-                    Channel(channel_object, self.user_list)
-                    for channel_object
-                    in client.api_call('channels.list')['channels'])
+                    (Channel(channel_data, key=self._key)
+                        for channel_data
+                        in client.api_call('channels.list')['channels']),
+                    key=self._key)
         # groups.list
         self.group_list = GroupList(
-                    Group(group_object, self.user_list)
-                    for group_object
-                    in client.api_call('groups.list')['groups'])
+                    (Group(group_data, key=self._key)
+                        for group_data
+                        in client.api_call('groups.list')['groups']),
+                    key=self._key)
 
     @property
     def team_id(self) -> str:
@@ -225,7 +251,7 @@ class Team:
         self._key = key
         self._logger = logger or logging.getLogger(__name__)
         if self._key not in _team:
-            _team[self._key] = _Team()
+            _team[self._key] = _Team(key=self._key)
 
     @property
     def team_id(self) -> str:
