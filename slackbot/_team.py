@@ -2,7 +2,6 @@
 
 import logging
 from typing import Any, Dict, Iterable, Iterator, List, Optional
-from ._action import Action
 from ._client import Client
 
 
@@ -343,11 +342,22 @@ class Team:
     def __init__(
             self,
             key: Optional[str] = None,
-            logger: Optional[logging.Logger] = None) -> None:
+            client: Optional[Client] = None) -> None:
         self._key = key
-        self._logger = logger or logging.getLogger(__name__)
+        self._client = client
+        if self._client is not None:
+            assert self._key == self._client._key
         if self._key not in _team:
             _team[self._key] = _Team(key=self._key)
+
+    def initialize(self, token: str) -> None:
+        if self._client is not None:
+            self._client.setup(token)
+            _team[self._key].reset(self._client)
+
+    def update(self, api_list: List[Dict[str, Any]]) -> None:
+        if self._client is not None:
+            _team[self._key].update(self._client, api_list)
 
     @property
     def team_id(self) -> str:
@@ -380,137 +390,3 @@ class Team:
             return self.user_list.id_search(bot_id)
         else:
             return None
-
-
-class TeamUpdate(Action):
-    def __init__(self,
-                 name: str,
-                 config: Any,
-                 logger: Optional[logging.Logger] = None) -> None:
-        super().__init__(
-                    name,
-                    config,
-                    logger or logging.getLogger(__name__))
-
-    def initialize(self, token: str) -> None:
-        # client
-        self._client.setup(token)
-        # auth.test
-        auth_test = self.api_call('auth.test')
-        bot_id = auth_test['user_id']
-        # team info
-        team_info = self.api_call('team.info')['team']
-        self._logger.debug("team id: '{0}'".format(team_info['id']))
-        self._logger.debug("team name: '{0}'".format(team_info['name']))
-        # user list
-        user_list = UserList(
-                    User(user_object)
-                    for user_object in self.api_call('users.list')['members'])
-        # channel list
-        channel_list = ChannelList(
-                    Channel(channel_object, user_list)
-                    for channel_object
-                    in self.api_call('channels.list')['channels'])
-        # group list
-        group_list = GroupList(
-                    Group(group_object, user_list)
-                    for group_object in self.api_call('groups.list')['groups'])
-        # team
-        self._team = Team(
-                team_info,
-                user_list,
-                channel_list,
-                group_list,
-                bot_id)
-
-    def run(self, api_list: List[Dict[str, Any]]) -> None:
-        is_team_updated = False
-        updated_channel_id_list = set()
-        updated_group_id_list = set()
-        for api in api_list:
-            api_type = api['type']
-            # user_change
-            if api_type == 'user_change':
-                user = self.team.user_list.id_search(api['user']['id'])
-                if user is not None:
-                    user.update(api['user'])
-            # team join
-            elif api_type == 'team_join':
-                self.team.user_list.add(User(api['user']))
-            # member_joined_channel, member_left_channel
-            elif api_type in ('member_joined_channel', 'member_left_channel'):
-                channel_type = api['channel_type']
-                if channel_type == 'C':
-                    updated_channel_id_list.add(api['channel'])
-                elif channel_type == 'G':
-                    updated_group_id_list.add(api['channel'])
-            # channel_archive, channel_unarchive
-            elif api_type in ('channel_archive', 'channel_unarchive'):
-                updated_channel_id_list.add(api['channel'])
-            # channel_rename
-            elif api_type == 'channel_rename':
-                updated_channel_id_list.add(api['channel']['id'])
-            # channel_created
-            elif api_type == 'channel_created':
-                updated_channel_id_list.add(api['channel']['id'])
-            # channel_deleted
-            elif api_type == 'channel_deleted':
-                self.team.channel_list.remove(api['channel'])
-            # group_archive, group_unarchive
-            elif api_type in ('group_archive', 'group_unarchive'):
-                updated_group_id_list.add(api['group'])
-            # group_rename
-            elif api_type == 'group_rename':
-                updated_group_id_list.add(api['group']['id'])
-            # team_domain_change, team_rename
-            elif api_type in ('team_domain_change', 'team_rename'):
-                is_team_updated = True
-            # message with subtype
-            elif api_type == 'message' and 'subtype' in api:
-                subtype = api['subtype']
-                # channel_purpose, channel_topic
-                if subtype in ('channel_purpose', 'channel_topic'):
-                    updated_channel_id_list.add(api['channel'])
-                # group_purpose, group_topic
-                elif subtype in ('group_purpose', 'group_topic'):
-                    updated_group_id_list.add(api['channel'])
-        # update team
-        if is_team_updated:
-            self._logger.info('update team')
-            self.team._team_info.update(self.api_call('team.info')['team'])
-        # update channel
-        for channel_id in updated_channel_id_list:
-            channel = self.team.channel_list.id_search(channel_id)
-            channel_object = self.api_call('channels.info',
-                                           channel=channel_id)['channel']
-            if channel is not None:
-                channel.update(channel_object)
-                self._logger.info(
-                            "update channel(id:'{0}', name:'{1}')"
-                            .format(channel.id, channel.name))
-            else:
-                self.team.channel_list.add(Channel(
-                            channel_object,
-                            self.team.user_list))
-                channel = self.team.channel_list.id_search(channel_id)
-                self._logger.info(
-                            "add channel(id:'{0}', name:'{1}')"
-                            .format(channel.id, channel.name))
-        # update group
-        for group_id in updated_group_id_list:
-            group = self.team.group_list.id_search(group_id)
-            group_object = self.api_call('groups.info',
-                                         group=group_id)['group']
-            if group is not None:
-                group.update(group_object)
-                self._logger.info(
-                            "update group(id:'{0}', name:'{1}')"
-                            .format(group.id, group.name))
-            else:
-                self.team.group_list.add(Group(
-                            group_object,
-                            self.team.user_list))
-                group = self.team.group_list.id_search(group_id)
-                self._logger.info(
-                            "add group(id:'{0}', name:'{1}')"
-                            .format(group.id, group.name))

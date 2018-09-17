@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from typing import Any, Optional, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Optional, Dict, List, Optional, Tuple
 from ._client import Client
 from ._config import Option
-if TYPE_CHECKING:
-    from ._team import Team
+from ._team import Team
 
 
 class Action(object):
@@ -22,11 +21,6 @@ class Action(object):
         self._name = name
         self._config = config
         self._client: Client = Client(logger=self._logger)
-        self._team: Optional['Team'] = None
-
-    def setup(self, token: str, team: 'Team') -> None:
-        self._client.setup(token)
-        self._team = team
 
     def run(self, api_list: List[Dict[str, Any]]) -> None:
         pass
@@ -43,8 +37,8 @@ class Action(object):
         return self._config
 
     @property
-    def team(self) -> 'Team':
-        return self._team
+    def team(self) -> Team:
+        return Team()
 
     @staticmethod
     def option_list() -> Tuple[Option, ...]:

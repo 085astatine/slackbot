@@ -11,8 +11,9 @@ import time
 from typing import Any, Dict, List, Optional, Tuple, Type
 import yaml
 from ._action import Action
+from ._client import Client
 from ._config import ConfigParser, Option
-from ._team import TeamUpdate
+from ._team import Team
 
 
 class Core(Action):
@@ -27,13 +28,10 @@ class Core(Action):
                     config,
                     logger or logging.getLogger(__name__))
         self._args = args
-        self._team_update = TeamUpdate(
-                    'TeamUpdate',
-                    ConfigParser(
-                        'TeamUpdate',
-                        TeamUpdate.option_list()).parse({}),
-                    logger.getChild('TeamUpdate'))
         self._action_dict = action_dict or {}
+        self._team = Team(
+                client=Client(
+                    logger=self._logger.getChild('Team')))
 
     def initialize(self) -> None:
         # load token
@@ -47,10 +45,7 @@ class Core(Action):
                           .format(token_file.resolve().as_posix()))
         # client, team
         self._client.setup(token)
-        self._team_update.initialize(token)
-        self._team = self._team_update.team
-        for action in self._action_dict.values():
-            action.setup(token, self._team_update.team)
+        self._team.initialize(token)
 
     def start(self) -> None:
         self._logger.info('connecting to the Real Time Messaging API')
@@ -72,7 +67,7 @@ class Core(Action):
                         'connecting to the Real Time Messaging API: failed')
 
     def run(self, api_list: List[Dict[str, Any]]) -> None:
-        self._team_update.run(api_list)
+        self._team.update(api_list)
 
     @staticmethod
     def option_list() -> Tuple[Option, ...]:
