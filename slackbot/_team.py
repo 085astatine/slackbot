@@ -131,6 +131,14 @@ class UserList(object):
         if user is not None:
             self._list.remove(user)
 
+    def update(self, data: Dict[str, Any]) -> None:
+        if 'id' in data:
+            user = self.id_search(data['id'])
+            if user is not None:
+                user.update(data)
+            else:
+                self.add(User(data, key=self._key))
+
 
 class ChannelList(object):
     def __init__(
@@ -163,6 +171,14 @@ class ChannelList(object):
         if channel is not None:
             self._list.remove(channel)
 
+    def update(self, data: Dict[str, Any]) -> None:
+        if 'id' in data:
+            channel = self.id_search(data['id'])
+            if channel is not None:
+                channel.update(data)
+            else:
+                self.add(Channel(data, key=self._key))
+
 
 class GroupList(object):
     def __init__(
@@ -192,6 +208,14 @@ class GroupList(object):
         group = self.id_search(id)
         if group is not None:
             self._list.remove(group)
+
+    def update(self, data: Dict[str, Any]) -> None:
+        if 'id' in data:
+            group = self.id_search(data['id'])
+            if group is not None:
+                group.update(data)
+            else:
+                self.add(Group(data, key=self._key))
 
 
 class _Team:
