@@ -7,7 +7,7 @@ from ._config import Option
 from ._team import Team
 
 
-class Action(object):
+class Action:
     def __init__(self,
                  name: str,
                  config: Any,

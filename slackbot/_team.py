@@ -8,7 +8,7 @@ from ._client import Client
 _team: Dict[Optional[str], '_Team'] = {}
 
 
-class User(object):
+class User:
     def __init__(
             self,
             data: Dict[str, Any],
@@ -32,42 +32,7 @@ class User(object):
         return self._data['name']
 
 
-class Channel(object):
-    def __init__(
-            self,
-            data: Dict[str, Any],
-            key: Optional[str] = None) -> None:
-        self._data = data
-        self._key = key
-
-    def get(self, key: str) -> Any:
-        return self._data[key]
-
-    def update(self, data: Dict[str, Any]) -> None:
-        self._data.clear()
-        self._data.update(data)
-
-    @property
-    def id(self) -> str:
-        return self._data['id']
-
-    @property
-    def name(self) -> str:
-        return self._data['name']
-
-    @property
-    def members(self) -> List[User]:
-        return list(filter(
-                None,
-                map(_team[self._key].user_list.id_search,
-                    self._data['members'])))
-
-    @property
-    def is_archived(self) -> bool:
-        return self._data['is_archived']
-
-
-class Group(object):
+class Channel:
     def __init__(
             self,
             data: Dict[str, Any],
@@ -102,7 +67,42 @@ class Group(object):
         return self._data['is_archived']
 
 
-class UserList(object):
+class Group:
+    def __init__(
+            self,
+            data: Dict[str, Any],
+            key: Optional[str] = None) -> None:
+        self._data = data
+        self._key = key
+
+    def get(self, key: str) -> Any:
+        return self._data[key]
+
+    def update(self, data: Dict[str, Any]) -> None:
+        self._data.clear()
+        self._data.update(data)
+
+    @property
+    def id(self) -> str:
+        return self._data['id']
+
+    @property
+    def name(self) -> str:
+        return self._data['name']
+
+    @property
+    def members(self) -> List[User]:
+        return list(filter(
+                None,
+                map(_team[self._key].user_list.id_search,
+                    self._data['members'])))
+
+    @property
+    def is_archived(self) -> bool:
+        return self._data['is_archived']
+
+
+class UserList:
     def __init__(
             self,
             user_list: Optional[Iterable[User]] = None,
@@ -139,7 +139,7 @@ class UserList(object):
                 self.add(User(data, key=self._key))
 
 
-class ChannelList(object):
+class ChannelList:
     def __init__(
             self,
             channel_list: Optional[Iterable[Channel]] = None,
@@ -179,7 +179,7 @@ class ChannelList(object):
                 self.add(Channel(data, key=self._key))
 
 
-class GroupList(object):
+class GroupList:
     def __init__(
             self,
             group_list: Optional[Iterable[Group]] = None,
