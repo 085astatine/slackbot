@@ -12,7 +12,7 @@ from typing import Deque, Optional, Tuple, Union
 import requests
 
 
-class DownloadProgress(object):
+class DownloadProgress:
     def __init__(
                 self,
                 file_size: Optional[int],
@@ -101,7 +101,7 @@ class DownloadException(Exception):
         return 'status code [{0}]'.format(self._response.status_code)
 
 
-class DownloadObserver(object):
+class DownloadObserver:
     def __init__(
                 self,
                 path: Union[str, pathlib.Path],
