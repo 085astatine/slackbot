@@ -67,7 +67,9 @@ class DownloadProgress(object):
     def remaining_time(self) -> Optional[float]:
         if self.file_size is None:
             return None
-        elif self.download_speed is None or self.download_speed <= 0.0:
+        elif (self.download_speed is None
+              or self.remaining_size is None
+              or self.download_speed <= 0.0):
             return None
         else:
             return self.remaining_size / self.download_speed

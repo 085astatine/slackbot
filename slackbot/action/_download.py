@@ -35,7 +35,7 @@ class DownloadReport(DownloadObserver):
         super()._receive_start(temp_file_path, response)
         # post message
         file_size = (
-                    int(response.headers.get('Content-Length'))
+                    int(response.headers['Content-Length'])
                     if response.headers.get('Content-Length', '').isdigit()
                     else None)
         message = '[{0}]:start <{1}> (size: {2})'.format(
