@@ -122,14 +122,17 @@ class DownloadReport(DownloadObserver):
 
 
 class Download(Action):
-    def __init__(self,
-                 name: str,
-                 config: Any,
-                 logger: Optional[logging.Logger] = None) -> None:
+    def __init__(
+            self,
+            name: str,
+            config: Any,
+            key: Optional[str] = None,
+            logger: Optional[logging.Logger] = None) -> None:
         super().__init__(
-                    name,
-                    config,
-                    logger=logger or logging.getLogger(__name__))
+                name,
+                config,
+                key=key,
+                logger=logger or logging.getLogger(__name__))
         self._process_list: List[DownloadReport] = []
 
     def run(self, api_list: List[Dict[str, Any]]) -> None:
