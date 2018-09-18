@@ -11,6 +11,7 @@ class Action(object):
     def __init__(self,
                  name: str,
                  config: Any,
+                 key: Optional[str] = None,
                  logger: Optional[logging.Logger] = None) -> None:
         # logger
         if not hasattr(self, '_logger'):
@@ -20,7 +21,8 @@ class Action(object):
         # parameter
         self._name = name
         self._config = config
-        self._client: Client = Client(logger=self._logger)
+        self._key = key
+        self._client = Client(key=self._key, logger=self._logger)
 
     def run(self, api_list: List[Dict[str, Any]]) -> None:
         pass
@@ -38,7 +40,7 @@ class Action(object):
 
     @property
     def team(self) -> Team:
-        return Team()
+        return Team(key=self._key)
 
     @staticmethod
     def option_list() -> Tuple[Option, ...]:

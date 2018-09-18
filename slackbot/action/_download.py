@@ -23,7 +23,7 @@ class DownloadReport(DownloadObserver):
         super().__init__(
                     path,
                     url,
-                    logger or logging.getLogger(__name__))
+                    logger=logger or logging.getLogger(__name__))
         self._client = client
         self._channel = channel
         self._least_size = least_size
@@ -129,7 +129,7 @@ class Download(Action):
         super().__init__(
                     name,
                     config,
-                    logger or logging.getLogger(__name__))
+                    logger=logger or logging.getLogger(__name__))
         self._process_list: List[DownloadReport] = []
 
     def run(self, api_list: List[Dict[str, Any]]) -> None:

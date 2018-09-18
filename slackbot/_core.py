@@ -26,7 +26,7 @@ class Core(Action):
         super().__init__(
                     name,
                     config,
-                    logger or logging.getLogger(__name__))
+                    logger=logger or logging.getLogger(__name__))
         self._args = args
         self._action_dict = action_dict or {}
         self._team = Team(

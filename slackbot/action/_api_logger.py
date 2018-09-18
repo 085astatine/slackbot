@@ -20,7 +20,7 @@ class APILogger(Action):
         super().__init__(
                     name,
                     config,
-                    logger or logging.getLogger(__name__))
+                    logger=logger or logging.getLogger(__name__))
 
     def run(self, api_list: List[Dict[str, Any]]) -> None:
         for api in api_list:
