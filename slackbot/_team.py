@@ -220,6 +220,7 @@ class GroupList(object):
 class _Team:
     def __init__(self, key: Optional[str] = None) -> None:
         self._key = key
+        self._ref_count = 1
         self.url: Optional[str] = None
         self.bot_id: Optional[str] = None
         self._team: Dict[str, Any] = {}
@@ -347,8 +348,16 @@ class Team:
         self._client = client
         if self._client is not None:
             assert self._key == self._client._key
+        # register team
         if self._key not in _team:
             _team[self._key] = _Team(key=self._key)
+        else:
+            _team[self._key]._ref_count += 1
+
+    def __del__(self):
+        _team[self._key]._ref_count -= 1
+        if _team[self._key]._ref_count <= 0:
+            del _team[self._key]
 
     def initialize(self, token: str) -> None:
         if self._client is not None:
