@@ -12,7 +12,7 @@ from typing import Deque, Optional, Tuple, Union
 import requests
 
 
-class DownloadProgress(object):
+class DownloadProgress:
     def __init__(
                 self,
                 file_size: Optional[int],
@@ -67,7 +67,9 @@ class DownloadProgress(object):
     def remaining_time(self) -> Optional[float]:
         if self.file_size is None:
             return None
-        elif self.download_speed is None or self.download_speed <= 0.0:
+        elif (self.download_speed is None
+              or self.remaining_size is None
+              or self.download_speed <= 0.0):
             return None
         else:
             return self.remaining_size / self.download_speed
@@ -99,7 +101,7 @@ class DownloadException(Exception):
         return 'status code [{0}]'.format(self._response.status_code)
 
 
-class DownloadObserver(object):
+class DownloadObserver:
     def __init__(
                 self,
                 path: Union[str, pathlib.Path],
@@ -229,6 +231,10 @@ class DownloadThread(threading.Thread):
         self._permission = permission
 
     def run(self) -> None:
+        # mkdir
+        if not self._path.parent.exists():
+            self._path.parent.mkdir(parents=True)
+        # download
         with tempfile.NamedTemporaryFile(
                         mode='wb',
                         delete=False,
@@ -293,8 +299,6 @@ class DownloadThread(threading.Thread):
                 return
         # move file
         with _move_file_lock:
-            if not self._path.parent.exists():
-                self._path.parent.mkdir(parents=True)
             save_path = self._path
             if save_path.exists():
                 index = 0
