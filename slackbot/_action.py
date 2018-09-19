@@ -1,43 +1,34 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from typing import Any, Optional, Dict, List, Optional, Tuple, TYPE_CHECKING
-import slackclient
+from typing import Any, Optional, Dict, List, Optional, Tuple
+from ._client import Client
 from ._config import Option
-if TYPE_CHECKING:
-    from ._team import Team
+from ._team import Team
 
 
-class Action(object):
+class Action:
     def __init__(self,
                  name: str,
                  config: Any,
+                 key: Optional[str] = None,
                  logger: Optional[logging.Logger] = None) -> None:
-        self._name = name
-        self._config = config
-        self._client: Optional[slackclient.SlackClient] = None
-        self._team: Optional['Team'] = None
+        # logger
         if not hasattr(self, '_logger'):
             self._logger = logger or logging.getLogger(__name__)
         else:
             assert isinstance(self._logger, logging.Logger)
-
-    def setup(self, client: slackclient.SlackClient, team: 'Team') -> None:
-        self._client = client
-        self._team = team
+        # parameter
+        self._name = name
+        self._config = config
+        self._key = key
+        self._client = Client(key=self._key, logger=self._logger)
 
     def run(self, api_list: List[Dict[str, Any]]) -> None:
         pass
 
     def api_call(self, method: str, **kwargs):
-        self._logger.debug("call API '{0}': {1}".format(method, kwargs))
-        result = self._client.api_call(method, **kwargs)
-        self._logger.log(
-                    (logging.DEBUG
-                        if result.get('ok', False)
-                        else logging.ERROR),
-                    'result: {0}'.format(result))
-        return result
+        return self._client.api_call(method, **kwargs)
 
     @property
     def name(self) -> str:
@@ -48,8 +39,8 @@ class Action(object):
         return self._config
 
     @property
-    def team(self) -> 'Team':
-        return self._team
+    def team(self) -> Team:
+        return Team(key=self._key)
 
     @staticmethod
     def option_list() -> Tuple[Option, ...]:

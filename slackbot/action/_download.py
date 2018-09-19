@@ -6,15 +6,15 @@ import pathlib
 import re
 from typing import Any, Dict, List, Optional, Tuple
 import requests
-import slackclient
 from .. import Action, Option
+from .._client import Client
 from .._team import Channel
 from ._download_thread import DownloadObserver, DownloadProgress
 
 
 class DownloadReport(DownloadObserver):
     def __init__(self,
-                 client: slackclient.SlackClient,
+                 client: Client,
                  path: pathlib.Path,
                  url: str,
                  channel: Channel,
@@ -23,7 +23,7 @@ class DownloadReport(DownloadObserver):
         super().__init__(
                     path,
                     url,
-                    logger or logging.getLogger(__name__))
+                    logger=logger or logging.getLogger(__name__))
         self._client = client
         self._channel = channel
         self._least_size = least_size
@@ -122,14 +122,17 @@ class DownloadReport(DownloadObserver):
 
 
 class Download(Action):
-    def __init__(self,
-                 name: str,
-                 config: Any,
-                 logger: Optional[logging.Logger] = None) -> None:
+    def __init__(
+            self,
+            name: str,
+            config: Any,
+            key: Optional[str] = None,
+            logger: Optional[logging.Logger] = None) -> None:
         super().__init__(
-                    name,
-                    config,
-                    logger or logging.getLogger(__name__))
+                name,
+                config,
+                key=key,
+                logger=logger or logging.getLogger(__name__))
         self._process_list: List[DownloadReport] = []
 
     def run(self, api_list: List[Dict[str, Any]]) -> None:

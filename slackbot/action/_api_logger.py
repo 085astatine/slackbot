@@ -13,14 +13,17 @@ class Mode(enum.Enum):
 
 
 class APILogger(Action):
-    def __init__(self,
-                 name: str,
-                 config: Any,
-                 logger: Optional[logging.Logger] = None) -> None:
+    def __init__(
+            self,
+            name: str,
+            config: Any,
+            key: Optional[str] = None,
+            logger: Optional[logging.Logger] = None) -> None:
         super().__init__(
-                    name,
-                    config,
-                    logger or logging.getLogger(__name__))
+                name,
+                config,
+                key=key,
+                logger=logger or logging.getLogger(__name__))
 
     def run(self, api_list: List[Dict[str, Any]]) -> None:
         for api in api_list:
