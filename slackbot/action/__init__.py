@@ -7,4 +7,4 @@ from ._download_thread import (
     DownloadObserver,
     DownloadProgress,
     DownloadThread)
-from ._ping import Ping
+from ._response import Response

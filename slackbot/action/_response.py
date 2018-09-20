@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from .. import Action, Option, unescape_text
 
 
-class Ping(Action):
+class Response(Action):
     def __init__(
             self,
             name: str,
