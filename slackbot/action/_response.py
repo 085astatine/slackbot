@@ -4,6 +4,7 @@ import logging
 import re
 from typing import Any, Dict, List, Optional, Tuple
 from .. import Action, Option, unescape_text
+from .._team import Channel
 
 
 class Response(Action):
@@ -25,23 +26,11 @@ class Response(Action):
                 channel = self.team.channel_list.id_search(api['channel'])
                 if channel is None or channel.name not in self.config.channel:
                     continue
-                pattern = r'<@(?P<to>[^>]+)>:?\s+(?P<text>.+)'
-                match = re.match(pattern, api['text'])
-                if (match and
-                        match.group('to') == self.team.bot.id and
-                        unescape_text(match.group('text').strip())
-                        == self.config.word):
-                    user = self.team.user_list.id_search(api['user'])
-                    if user is None:
-                        self._logger.error("unknown user id '{0}'"
-                                           .format(api['user']))
-                        continue
-                    reply = '<@{0}> {1}'.format(user.id, self.config.reply)
-                    self._logger.info("ping from '{0}' on '{1}'"
-                                      .format(user.name, channel.name))
-                    self.api_call('chat.postMessage',
-                                  text=reply,
-                                  channel=channel.id)
+                _response(
+                        self,
+                        channel,
+                        api['text'],
+                        api['user'])
 
     @staticmethod
     def option_list() -> Tuple[Option, ...]:
@@ -59,3 +48,28 @@ class Response(Action):
                    type=str,
                    default='pong',
                    help='reply message'))
+
+def _response(
+        self: Response,
+        channel: Channel,
+        message: str,
+        user_id: str) -> None:
+    bot = self.team.bot
+    match = re.match(r'<@(?P<reply_to>[^>]+)>\s+(?P<text>.+)', message)
+    if not match:
+        return
+    if bot is None or match.group('reply_to') != bot.id:
+        return
+    if unescape_text(match.group('text')).strip() != self.config.word:
+        return
+    user = self.team.user_list.id_search(user_id)
+    if user is None:
+        self._logger.error("unknown user id '{0}'" .format(user_id))
+        return
+    reply = "<@{0}> {1}".format(user_id, self.config.reply)
+    self._logger.info(
+            "response from '{0}' on '{1}'".format(user.name, channel.name))
+    self.api_call(
+            'chat.postMessage',
+            text=reply,
+            channel=channel.id)
