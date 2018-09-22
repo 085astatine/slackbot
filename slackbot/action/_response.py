@@ -49,13 +49,14 @@ class Response(Action):
                    default='pong',
                    help='reply message'))
 
+
 def _response(
         self: Response,
         channel: Channel,
         message: str,
         user_id: str) -> None:
     bot = self.team.bot
-    match = re.match(r'<@(?P<reply_to>[^>]+)>\s+(?P<text>.+)', message)
+    match = re.match(r'<@(?P<reply_to>[^|>]+)(|\|.+)>\s+(?P<text>.+)', message)
     if not match:
         return
     if bot is None or match.group('reply_to') != bot.id:
