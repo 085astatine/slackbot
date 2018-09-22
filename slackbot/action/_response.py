@@ -1,10 +1,18 @@
 # -*- coding: utf-8 -*-
 
+import enum
 import logging
 import re
+from collections import OrderedDict
 from typing import Any, Dict, List, Optional, Tuple
 from .. import Action, Option, unescape_text
 from .._team import Channel
+
+
+class Trigger(enum.Enum):
+    NON_REPLY = enum.auto()
+    REPLY = enum.auto()
+    ANY = enum.auto()
 
 
 class Response(Action):
@@ -34,11 +42,21 @@ class Response(Action):
 
     @staticmethod
     def option_list() -> Tuple[Option, ...]:
+        # translate: str -> Trigger
+        to_trigger: Dict[str, Trigger] = OrderedDict()
+        to_trigger['non-reply'] = Trigger.NON_REPLY
+        to_trigger['reply'] = Trigger.REPLY
+        to_trigger['any'] = Trigger.ANY
         return (
             Option('channel',
                    action=lambda x: [x] if isinstance(x, str) else x,
                    default=[],
                    help='target channel name (list or string)'),
+            Option('trigger',
+                   default='non-reply',
+                   action=lambda x: to_trigger.get(x),
+                   choices=to_trigger.keys(),
+                   help='response trigger'),
             Option('word',
                    type=str,
                    action=str.strip,
