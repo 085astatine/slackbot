@@ -6,7 +6,7 @@ import re
 from collections import OrderedDict
 from typing import Any, Dict, List, Optional, Tuple
 from .. import Action, Option, unescape_text
-from .._team import Channel
+from .._team import Channel, User
 
 
 class Trigger(enum.Enum):
@@ -34,11 +34,14 @@ class Response(Action):
                 channel = self.team.channel_list.id_search(api['channel'])
                 if channel is None or channel.name not in self.config.channel:
                     continue
+                user = self.team.user_list.id_search(api['user'])
+                if user is None:
+                    continue
                 _response(
                         self,
+                        user,
                         channel,
-                        api['text'],
-                        api['user'])
+                        api['text'])
 
     @staticmethod
     def option_list() -> Tuple[Option, ...]:
@@ -70,25 +73,30 @@ class Response(Action):
 
 def _response(
         self: Response,
+        user: User,
         channel: Channel,
-        message: str,
-        user_id: str) -> None:
-    bot = self.team.bot
-    match = re.match(r'<@(?P<reply_to>[^|>]+)(|\|.+)>\s+(?P<text>.+)', message)
+        message: str) -> None:
+    match = re.search(
+            r'(<@(?P<reply_to>[^|>]+)(|\|.+)>|)\s*(?P<text>.+)',
+            message)
     if not match:
-        return
-    if bot is None or match.group('reply_to') != bot.id:
         return
     if unescape_text(match.group('text')).strip() != self.config.word:
         return
-    user = self.team.user_list.id_search(user_id)
-    if user is None:
-        self._logger.error("unknown user id '{0}'" .format(user_id))
+    # create response
+    response = ""
+    if (self.team.bot is not None
+            and match.group('reply_to') == self.team.bot.id):
+        response += "<@{0}> ".format(user.id)
+        if self.config.trigger == Trigger.NON_REPLY:
+            return
+    elif self.config.trigger == Trigger.REPLY:
         return
-    reply = "<@{0}> {1}".format(user_id, self.config.reply)
+    response += self.config.reply
+    # api call
     self._logger.info(
-            "response from '{0}' on '{1}'".format(user.name, channel.name))
+            "call from '{0}' on '{1}'".format(user.name, channel.name))
     self.api_call(
             'chat.postMessage',
-            text=reply,
+            text=response,
             channel=channel.id)
