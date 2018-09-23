@@ -2,6 +2,7 @@
 
 import enum
 import logging
+import random
 import re
 from collections import OrderedDict
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
@@ -132,16 +133,7 @@ class Response(Action):
                    default=(Pattern(call='ping', response='pong'),),
                    action=parse_pattern_list,
                    help='response pattern'
-                        ' (default: [{call: ping, response: pong}])'),
-            Option('word',
-                   type=str,
-                   action=str.strip,
-                   default='ping',
-                   help='word to react'),
-            Option('reply',
-                   type=str,
-                   default='pong',
-                   help='reply message'))
+                        ' (default: [{call: ping, response: pong}])'))
 
 
 def _response(
@@ -154,22 +146,24 @@ def _response(
             message)
     if not match:
         return
-    if unescape_text(match.group('text')).strip() != self.config.word:
-        return
-    # create response
-    response = ""
-    if (self.team.bot is not None
-            and match.group('reply_to') == self.team.bot.id):
-        response += "<@{0}> ".format(user.id)
-        if self.config.trigger == Trigger.NON_REPLY:
+    text = unescape_text(match.group('text'))
+    for pattern in self.config.pattern:
+        if text not in pattern.call:
+            continue
+        # create response
+        response = ""
+        if (self.team.bot is not None
+                and match.group('reply_to') == self.team.bot.id):
+            response += "<@{0}> ".format(user.id)
+            if self.config.trigger == Trigger.NON_REPLY:
+                return
+        elif self.config.trigger == Trigger.REPLY:
             return
-    elif self.config.trigger == Trigger.REPLY:
-        return
-    response += self.config.reply
-    # api call
-    self._logger.info(
-            "call from '{0}' on '{1}'".format(user.name, channel.name))
-    self.api_call(
-            'chat.postMessage',
-            text=response,
-            channel=channel.id)
+        response += random.choice(pattern.response)
+        # api call
+        self._logger.info(
+                "call from '{0}' on '{1}'".format(user.name, channel.name))
+        self.api_call(
+                'chat.postMessage',
+                text=response,
+                channel=channel.id)
