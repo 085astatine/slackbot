@@ -20,15 +20,19 @@ class Pattern:
             self,
             call: Union[str, Iterable[str]],
             response: Union[str, Iterable[str]]) -> None:
-        self.call: Tuple[str, ...] = (
-                tuple(call)
-                if not isinstance(call, str)
-                else (call,))
-        self.response: Tuple[str, ...] = (
-                tuple(response)
-                if not isinstance(response, str)
-                else (response,))
+        # call
+        self.call: Tuple[str, ...]
+        if isinstance(call, str):
+            self.call = (call,)
+        else:
+            self.call = tuple(call)
         assert(all(map(lambda x: isinstance(x, str), self.call)))
+        # response
+        self.response: Tuple[str, ...]
+        if isinstance(response, str):
+            self.response = (response,)
+        else:
+            self.response = tuple(response)
         assert(all(map(lambda x: isinstance(x, str), self.response)))
 
     def __repr__(self) -> str:
