@@ -119,6 +119,15 @@ class Response(Action):
                 raise OptionError(message)
             return result
 
+        # check icon
+        def check_icon(value: str) -> str:
+            if not (_is_emoji(value) or _is_url(value)):
+                message = (
+                        'icon is nether an emoji nor a url: {0}'
+                        .format(value))
+                raise OptionError(message)
+            return value
+
         return (
             Option('channel',
                    action=lambda x: [x] if isinstance(x, str) else x,
@@ -133,7 +142,10 @@ class Response(Action):
                    default=(Pattern(call='ping', response='pong'),),
                    action=parse_pattern_list,
                    help='response pattern'
-                        ' (default: [{call: ping, response: pong}])'))
+                        ' (default: [{call: ping, response: pong}])'),
+            Option('icon',
+                   action=check_icon,
+                   help='user icon (:emoji: or http://url/to/icon)'))
 
 
 def _response(
@@ -150,20 +162,36 @@ def _response(
     for pattern in self.config.pattern:
         if text not in pattern.call:
             continue
-        # create response
-        response = ""
+        # params
+        params = {}
+        params['text'] = ''
+        params['channel'] = channel.id
+        # create text
         if (self.team.bot is not None
                 and match.group('reply_to') == self.team.bot.id):
-            response += "<@{0}> ".format(user.id)
+            params['text'] += '<@{0}> '.format(user.id)
             if self.config.trigger == Trigger.NON_REPLY:
                 return
         elif self.config.trigger == Trigger.REPLY:
             return
-        response += random.choice(pattern.response)
+        params['text'] += random.choice(pattern.response)
+        # icon
+        if self.config.icon is not None:
+            if _is_emoji(self.config.icon):
+                params['icon_emoji'] = self.config.icon
+            elif _is_url(self.config.icon):
+                params['icon_url'] = self.config.icon
         # api call
         self._logger.info(
                 "call from '{0}' on '{1}'".format(user.name, channel.name))
         self.api_call(
                 'chat.postMessage',
-                text=response,
-                channel=channel.id)
+                **params)
+
+
+def _is_url(value: str) -> bool:
+    return bool(re.match(r'https?://[\w/:%#$&\?\(\)~\.\=\+\-]+', value))
+
+
+def _is_emoji(value: str) -> bool:
+    return bool( re.match(':[^:]+:', value))
