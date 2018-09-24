@@ -143,6 +143,8 @@ class Response(Action):
                    action=parse_pattern_list,
                    help='response pattern'
                         ' (default: [{call: ping, response: pong}])'),
+            Option('username',
+                   help='username'),
             Option('icon',
                    action=check_icon,
                    help='user icon (:emoji: or http://url/to/icon)'))
@@ -175,6 +177,9 @@ def _response(
         elif self.config.trigger == Trigger.REPLY:
             return
         params['text'] += random.choice(pattern.response)
+        # username
+        if self.config.username is not None:
+            params['username'] = self.config.username
         # icon
         if self.config.icon is not None:
             if _is_emoji(self.config.icon):
