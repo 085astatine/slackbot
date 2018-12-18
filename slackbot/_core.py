@@ -35,7 +35,7 @@ class Core(Action):
 
     def initialize(self) -> None:
         # load token
-        token_file = self._args.config.parent.joinpath(self.config.token_file)
+        token_file = pathlib.Path(self.config.token_file)
         if not token_file.exists():
             self._logger.error("token file '{0}' does not exist"
                                .format(token_file.resolve().as_posix()))
