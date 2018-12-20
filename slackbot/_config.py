@@ -132,7 +132,6 @@ class ConfigParser:
         strline = []
         strline.append('{0}:'.format(self.name))
         for option in self.option_list:
-            strline.append('  {0}: # {1}'.format(
-                        option.name,
-                        option.help_message()))
+            strline.append('  # {0}'.format(option.help_message()))
+            strline.append('  {0}:'.format(option.name))
         return '\n'.join(strline)
