@@ -133,5 +133,9 @@ class ConfigParser:
         strline.append('{0}:'.format(self.name))
         for option in self.option_list:
             strline.append('  # {0}'.format(option.help_message()))
-            strline.append('  {0}:'.format(option.name))
+            default = option.default
+            if isinstance(default, (str, int, float, bool)):
+                strline.append('  {0}: {1}'.format(option.name, default))
+            else:
+                strline.append('  {0}:'.format(option.name))
         return '\n'.join(strline)
