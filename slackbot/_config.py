@@ -2,7 +2,7 @@
 
 import collections
 import sys
-from typing import Any, Callable, Dict, Iterable, Optional, Tuple, Type
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type
 
 
 class OptionError(Exception):
@@ -83,6 +83,15 @@ class Option:
         ss.append('({0})'.format('required' if self.required else 'optional'))
         return ''.join(ss)
 
+    def sample_message(self) -> List[str]:
+        result: List[str] = []
+        sample = self.default
+        if isinstance(sample, (str, int, float, bool)):
+            result.append('{0}: {1}'.format(self.name, sample))
+        else:
+            result.append('{0}:'.format(self.name))
+        return result
+
 
 class ConfigParser:
     def __init__(self, name: str, option_list: Tuple[Option, ...]) -> None:
@@ -133,9 +142,6 @@ class ConfigParser:
         strline.append('{0}:'.format(self.name))
         for option in self.option_list:
             strline.append('  # {0}'.format(option.help_message()))
-            default = option.default
-            if isinstance(default, (str, int, float, bool)):
-                strline.append('  {0}: {1}'.format(option.name, default))
-            else:
-                strline.append('  {0}:'.format(option.name))
+            strline.extend('  {0}'.format(line)
+                           for line in option.sample_message())
         return '\n'.join(strline)
