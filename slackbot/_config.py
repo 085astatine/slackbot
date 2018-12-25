@@ -3,6 +3,7 @@
 import collections
 import sys
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type
+import yaml
 
 
 class OptionError(Exception):
@@ -86,8 +87,11 @@ class Option:
     def sample_message(self) -> List[str]:
         result: List[str] = []
         sample = self.default
-        if isinstance(sample, (str, int, float, bool)):
-            result.append('{0}: {1}'.format(self.name, sample))
+        if sample is not None:
+            result.extend(
+                    yaml.dump({self.name: sample}, default_flow_style=False)
+                    .strip()
+                    .split('\n'))
         else:
             result.append('{0}:'.format(self.name))
         return result
