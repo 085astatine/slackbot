@@ -79,18 +79,19 @@ class Option:
         ss.append('({0})'.format('required' if self.required else 'optional'))
         return ''.join(ss)
 
-    def sample_message(self) -> List[str]:
-        result: List[str] = []
-        result.append('# {0}'.format(self.help_message()))
+    def sample_message(self, indent: int = 0) -> List[str]:
+        line: List[str] = []
+        line.append('{0}# {1}'.format(' ' * indent, self.help_message()))
         sample = self.sample if self.sample is not None else self.default
         if sample is not None:
-            result.extend(
-                    yaml.dump({self.name: sample}, default_flow_style=False)
-                    .strip()
-                    .split('\n'))
+            yaml_text = yaml.dump(
+                    {self.name: sample},
+                    default_flow_style=False)
+            line.extend('{0}{1}'.format(' ' * indent, line)
+                        for line in yaml_text.strip().split('\n'))
         else:
-            result.append('{0}:'.format(self.name))
-        return result
+            line.append('{0}{1}:'.format(' ' * indent, self.name))
+        return line
 
 
 class ConfigParser:
@@ -141,6 +142,5 @@ class ConfigParser:
         strline = []
         strline.append('{0}:'.format(self.name))
         for option in self.option_list:
-            strline.extend('  {0}'.format(line)
-                           for line in option.sample_message())
+            strline.extend(option.sample_message(indent=2))
         return '\n'.join(strline)
