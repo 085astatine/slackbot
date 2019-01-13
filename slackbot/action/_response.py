@@ -119,19 +119,13 @@ class Response(Action):
                 raise OptionError(message)
             return result
 
-        # check icon
-        def check_icon(value: str) -> str:
-            if not (_is_emoji(value) or _is_url(value)):
-                message = (
-                        'icon is nether an emoji nor a url: {0}'
-                        .format(value))
-                raise OptionError(message)
-            return value
-
         return (
             Option('channel',
-                   action=lambda x: [x] if isinstance(x, str) else x,
-                   default=[],
+                   action=lambda x: (
+                           [] if x is None
+                           else [x] if isinstance(x, str)
+                           else x),
+                   default=None,
                    help='target channel name (list or string)'),
             Option('trigger',
                    default='non-reply',
@@ -139,14 +133,13 @@ class Response(Action):
                    choices=to_trigger.keys(),
                    help='response trigger'),
             Option('pattern',
-                   default=(Pattern(call='ping', response='pong'),),
+                   default=[{'call': ['ping'], 'response': ['pong']}],
                    action=parse_pattern_list,
-                   help='response pattern'
-                        ' (default: [{call: ping, response: pong}])'),
+                   help='response pattern'),
             Option('username',
                    help='username'),
             Option('icon',
-                   action=check_icon,
+                   action=_check_icon,
                    help='user icon (:emoji: or http://url/to/icon)'))
 
 
@@ -200,3 +193,12 @@ def _is_url(value: str) -> bool:
 
 def _is_emoji(value: str) -> bool:
     return bool(re.match(':[^:]+:', value))
+
+
+def _check_icon(value: Optional[str]) -> Optional[str]:
+    if value is not None and not (_is_emoji(value) or _is_url(value)):
+        message = (
+                'icon is nether an emoji nor a url: {0}'
+                .format(value))
+        raise OptionError(message)
+    return value

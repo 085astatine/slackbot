@@ -181,8 +181,11 @@ class Download(Action):
 
         return (
             Option('channel',
-                   action=lambda x: [x] if isinstance(x, str) else x,
-                   default=[],
+                   action=lambda x: (
+                           [] if x is None
+                           else [x] if isinstance(x, str)
+                           else x),
+                   default=None,
                    help='target channel name (list or string)'),
             Option('pattern',
                    action=re.compile,
@@ -210,9 +213,9 @@ class Download(Action):
                    help=('number of data chunks'
                          ' for download speed measurement')),
             Option('least_size',
-                   type=int,
-                   help=('minimun file size'
-                         ' to be concidered successful download')),
+                   action=lambda x: int(x) if x is not None else None,
+                   help='minimun file size'
+                        ' to be concidered successful download'),
             Option('file_permission',
                    action=read_permission,
                    default='0o644',
