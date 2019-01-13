@@ -22,6 +22,7 @@ class Option:
                  type: Optional[Type] = None,
                  choices: Optional[Iterable] = None,
                  required: bool = False,
+                 sample: Optional[Any] = None,
                  help: str = "") -> None:
         self.name = name
         if action is not None:
@@ -38,6 +39,7 @@ class Option:
         self.choices = choices
         assert isinstance(required, bool)
         self.required = required
+        self.sample = sample
         self.help = help
 
     def evaluate(self, data: Dict[str, Any]) -> Any:
@@ -79,7 +81,7 @@ class Option:
 
     def sample_message(self) -> List[str]:
         result: List[str] = []
-        sample = self.default
+        sample = self.sample if self.sample is not None else self.default
         if sample is not None:
             result.extend(
                     yaml.dump({self.name: sample}, default_flow_style=False)

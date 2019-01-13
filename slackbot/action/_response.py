@@ -112,7 +112,7 @@ class Response(Action):
             elif hasattr(data, '__iter__') and not isinstance(data, str):
                 for element in data:
                     result.append(parse_pattern(element))
-            else:
+            elif data is not None:
                 message = (
                     'could not convert to Pattern\'s list: \'{0}\''
                     .format(data))
@@ -133,7 +133,7 @@ class Response(Action):
                    choices=to_trigger.keys(),
                    help='response trigger'),
             Option('pattern',
-                   default=[{'call': ['ping'], 'response': ['pong']}],
+                   sample=[{'call': ['ping'], 'response': ['pong']}],
                    action=parse_pattern_list,
                    help='response pattern'),
             Option('username',
