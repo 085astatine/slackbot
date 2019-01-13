@@ -199,4 +199,4 @@ def _is_url(value: str) -> bool:
 
 
 def _is_emoji(value: str) -> bool:
-    return bool( re.match(':[^:]+:', value))
+    return bool(re.match(':[^:]+:', value))
