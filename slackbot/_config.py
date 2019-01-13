@@ -81,6 +81,7 @@ class Option:
 
     def sample_message(self) -> List[str]:
         result: List[str] = []
+        result.append('# {0}'.format(self.help_message()))
         sample = self.sample if self.sample is not None else self.default
         if sample is not None:
             result.extend(
@@ -140,7 +141,6 @@ class ConfigParser:
         strline = []
         strline.append('{0}:'.format(self.name))
         for option in self.option_list:
-            strline.append('  # {0}'.format(option.help_message()))
             strline.extend('  {0}'.format(line)
                            for line in option.sample_message())
         return '\n'.join(strline)
