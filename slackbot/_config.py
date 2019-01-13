@@ -41,33 +41,26 @@ class Option:
         self.help = help
 
     def evaluate(self, data: Dict[str, Any]) -> Any:
-        # required check
-        if self.name not in data or data[self.name] is None:
+        if self.name not in data:
+            # required check
             if self.required:
                 message = ("the following argument is required '{0:s}'"
                            .format(self.name))
                 raise OptionError(message)
-            # return default value
-            default = self.default
-            if default is not None:
-                if isinstance(self.default, str) and self.type is not None:
-                    default = self.type(default)
-                if self.action is not None:
-                    default = self.action(default)
-            return default
-        value = data[self.name]
+        else:
+            # choices check
+            if self.choices is not None:
+                if data[self.name] not in self.choices:
+                    message = (
+                        "argument '{0}':invalid choice: {1} (choose from {2})"
+                        .format(self.name,
+                                repr(data[self.name]),
+                                ', '.join(map(repr, self.choices))))
+                    raise OptionError(message)
+        value = data.get(self.name, self.default)
         # type
-        if callable(self.type):
+        if self.type is not None:
             value = self.type(value)
-        # choices check
-        if self.choices is not None:
-            if value not in self.choices:
-                message = (
-                    "argument '{0}':invalid choice: {1} (choose from {2})"
-                    .format(self.name,
-                            repr(value),
-                            ', '.join(map(repr, self.choices))))
-                raise OptionError(message)
         # action
         if self.action is not None:
             value = self.action(value)
