@@ -3,7 +3,8 @@
 import collections
 import sys
 from typing import (
-        Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Tuple, Type)
+        Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Tuple,
+        Type, Union)
 import yaml
 
 
@@ -100,56 +101,70 @@ class Option:
         return line
 
 
-class ConfigParser:
-    def __init__(self, name: str, option_list: Tuple[Option, ...]) -> None:
+class OptionList:
+    def __init__(
+            self,
+            name: str,
+            options: Iterable[Union[Option, 'OptionList']]) -> None:
         self.name = name
-        self.option_list = option_list
+        self._list: List[Union[Option, 'OptionList']] = list(options)
 
-    def parse(self, data: Optional[Dict[str, Any]]) -> Any:
-        if data is None:
-            data = {}
+    def evaluate(self, input_: InputValue):
+        if input_.is_none:
+            input_ = InputValue(is_none=True, value={})
         result = {}
         is_error = False
-        for option in self.option_list:
-            input_ = InputValue(
-                    is_none=option.name not in data,
-                    value=data.get(option.name, None))
+        for option in self._list:
+            child_input = InputValue(
+                    is_none=option.name not in input_.value,
+                    value=input_.value.get(option.name, None))
             try:
-                result[option.name] = option.evaluate(input_)
+                result[option.name] = option.evaluate(child_input)
             except OptionError as e:
                 sys.stderr.write('{0}\n'.format(str(e)))
                 is_error = True
-        else:  # check unrecognized arguments
-            unused_key_list = sorted(
-                        set(data.keys()).difference(
-                                option.name for option in self.option_list))
-            if len(unused_key_list) != 0:
-                is_error = True
-                sys.stderr.write(
-                        "unrecognized arguments: {0}\n"
-                        .format(', '.join(map(repr, unused_key_list))))
+        # check unrecognized arguments
+        unused_key_list = sorted(
+                    set(input_.value.keys())
+                    .difference(option.name for option in self._list))
+        if len(unused_key_list) != 0:
+            is_error = True
+            sys.stderr.write(
+                    '{0} has unrecognized arguments: {1}\n'
+                    .format(self.name, ', '.join(map(repr, unused_key_list))))
         if is_error:
             sys.exit(2)
-        """convert: dict -> namedtuple('_', ...), list -> tuple"""
-        def convert(value: Any) -> Any:
+        """to immutable: dict -> namedtuple('_', ...), list -> tuple"""
+        def to_immutable(value: Any) -> Any:
             if isinstance(value, dict):
                 for key in value.keys():
-                    value[key] = convert(value[key])
+                    value[key] = to_immutable(value[key])
                 return collections.namedtuple('_', value.keys())(**value)
             elif isinstance(value, list):
-                return tuple(convert(i) for i in value)
+                return tuple(to_immutable(i) for i in value)
             else:
                 return value
-        # convert each value of result
-        for key, value in result.items():
-            result[key] = convert(value)
         return collections.namedtuple(
-                    "{}Config".format(self.name),
-                    result.keys())(**result)
+                '{0}Option'.format(self.name),
+                result.keys())(
+                        **dict((key, to_immutable(value))
+                               for key, value in result.items()))
+
+    def sample_message(self, indent: int = 0) -> List[str]:
+        line = []
+        line.append('{0}{1}:'.format(' ' * indent, self.name))
+        for option in self._list:
+            line.extend(option.sample_message(indent + 2))
+        return line
+
+
+class ConfigParser:
+    def __init__(self, name: str, option_list: Tuple[Option, ...]) -> None:
+        self._option_list = OptionList(name, option_list)
+
+    def parse(self, data: Optional[Dict[str, Any]]) -> Any:
+        input_ = InputValue(False, data if data is not None else {})
+        return self._option_list.evaluate(input_)
 
     def help_message(self) -> str:
-        strline = []
-        strline.append('{0}:'.format(self.name))
-        for option in self.option_list:
-            strline.extend(option.sample_message(indent=2))
-        return '\n'.join(strline)
+        return '\n'.join(self._option_list.sample_message(indent=0))
