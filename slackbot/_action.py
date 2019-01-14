@@ -3,7 +3,7 @@
 import logging
 from typing import Any, Optional, Dict, List, Optional, Tuple
 from ._client import Client
-from ._config import Option
+from ._config import OptionList
 from ._team import Team
 
 
@@ -43,8 +43,8 @@ class Action:
         return Team(key=self._key)
 
     @staticmethod
-    def option_list() -> Tuple[Option, ...]:
-        return tuple()
+    def option_list(name: str) -> OptionList:
+        return OptionList(name, [])
 
 
 def escape_text(string: str) -> str:

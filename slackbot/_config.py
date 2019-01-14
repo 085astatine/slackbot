@@ -169,8 +169,8 @@ class OptionList:
 
 
 class ConfigParser:
-    def __init__(self, name: str, option_list: Tuple[Option, ...]) -> None:
-        self._option_list = OptionList(name, option_list)
+    def __init__(self, option_list: OptionList) -> None:
+        self._option_list = option_list
 
     def parse(self, data: Optional[Dict[str, Any]]) -> Any:
         input_ = InputValue(False, data if data is not None else {})

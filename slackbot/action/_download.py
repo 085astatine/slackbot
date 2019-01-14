@@ -6,7 +6,7 @@ import pathlib
 import re
 from typing import Any, Dict, List, Optional, Tuple
 import requests
-from .. import Action, Option
+from .. import Action, Option, OptionList
 from .._client import Client
 from .._team import Channel
 from ._download_thread import DownloadObserver, DownloadProgress
@@ -171,7 +171,7 @@ class Download(Action):
             self._process_list.remove(finished_process)
 
     @staticmethod
-    def option_list() -> Tuple[Option, ...]:
+    def option_list(name: str) -> OptionList:
         # parse permission (format 0oXXX)
         def read_permission(value: str) -> Optional[int]:
             match = re.match('0o(?P<permission>[0-7]{3})', value)
@@ -179,44 +179,45 @@ class Download(Action):
                 return int(match.group('permission'), base=8)
             return None
 
-        return (
-            Option('channel',
-                   action=lambda x: (
-                           [] if x is None
-                           else [x] if isinstance(x, str)
-                           else x),
-                   default=None,
-                   help='target channel name (list or string)'),
-            Option('pattern',
-                   action=re.compile,
-                   default=r'download\s+"(?P<name>.+)"\s+'
-                           r'<(?P<url>https?://[\w/:%#\$&\?\(\)~\.=\+\-]+)'
-                           r'(|\|[^>]+)>',
-                   help=('regular expresion for working'
-                         ' which have simbolic groups named "name" & "url"')),
-            Option('destination_directory',
-                   action=lambda x: pathlib.Path().joinpath(x),
-                   default='./download',
-                   help='directory where files are saved'),
-            Option('chunk_size',
-                   default=1024,
-                   type=int,
-                   help='data chank size (byte) for streaming download'),
-            Option('report_interval',
-                   default=60.0,
-                   type=float,
-                   help=('interval in seconds'
-                         ' between download progress reports')),
-            Option('speedmeter_size',
-                   default=100,
-                   type=int,
-                   help=('number of data chunks'
-                         ' for download speed measurement')),
-            Option('least_size',
-                   action=lambda x: int(x) if x is not None else None,
-                   help='minimun file size'
-                        ' to be concidered successful download'),
-            Option('file_permission',
-                   action=read_permission,
-                   default='0o644',
-                   help='downloaded file permission (format: 0oXXX)'))
+        return OptionList(
+            name,
+            [Option('channel',
+                    action=lambda x: (
+                            [] if x is None
+                            else [x] if isinstance(x, str)
+                            else x),
+                    default=None,
+                    help='target channel name (list or string)'),
+             Option('pattern',
+                    action=re.compile,
+                    default=r'download\s+"(?P<name>.+)"\s+'
+                            r'<(?P<url>https?://[\w/:%#\$&\?\(\)~\.=\+\-]+)'
+                            r'(|\|[^>]+)>',
+                    help=('regular expresion for working'
+                          ' which have simbolic groups named "name" & "url"')),
+             Option('destination_directory',
+                    action=lambda x: pathlib.Path().joinpath(x),
+                    default='./download',
+                    help='directory where files are saved'),
+             Option('chunk_size',
+                    default=1024,
+                    type=int,
+                    help='data chank size (byte) for streaming download'),
+             Option('report_interval',
+                    default=60.0,
+                    type=float,
+                    help=('interval in seconds'
+                          ' between download progress reports')),
+             Option('speedmeter_size',
+                    default=100,
+                    type=int,
+                    help=('number of data chunks'
+                          ' for download speed measurement')),
+             Option('least_size',
+                    action=lambda x: int(x) if x is not None else None,
+                    help='minimun file size'
+                         ' to be concidered successful download'),
+             Option('file_permission',
+                    action=read_permission,
+                    default='0o644',
+                    help='downloaded file permission (format: 0oXXX)')])
