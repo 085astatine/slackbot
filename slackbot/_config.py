@@ -2,7 +2,8 @@
 
 import collections
 import sys
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Type
+from typing import (
+        Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Tuple, Type)
 import yaml
 
 
@@ -12,6 +13,11 @@ class OptionError(Exception):
 
     def __str__(self) -> str:
         return self.message
+
+
+class InputValue(NamedTuple):
+    is_none: bool = True
+    value: Any = None
 
 
 class Option:
@@ -42,8 +48,8 @@ class Option:
         self.sample = sample
         self.help = help
 
-    def evaluate(self, data: Dict[str, Any]) -> Any:
-        if self.name not in data:
+    def evaluate(self, input_: InputValue) -> Any:
+        if input_.is_none:
             # required check
             if self.required:
                 message = ("the following argument is required '{0:s}'"
@@ -52,14 +58,14 @@ class Option:
         else:
             # choices check
             if self.choices is not None:
-                if data[self.name] not in self.choices:
+                if input_.value not in self.choices:
                     message = (
                         "argument '{0}':invalid choice: {1} (choose from {2})"
                         .format(self.name,
-                                repr(data[self.name]),
+                                repr(input_.value),
                                 ', '.join(map(repr, self.choices))))
                     raise OptionError(message)
-        value = data.get(self.name, self.default)
+        value = input_.value if not input_.is_none else self.default
         # type
         if self.type is not None:
             value = self.type(value)
@@ -105,8 +111,11 @@ class ConfigParser:
         result = {}
         is_error = False
         for option in self.option_list:
+            input_ = InputValue(
+                    is_none=option.name not in data,
+                    value=data.get(option.name, None))
             try:
-                result[option.name] = option.evaluate(data)
+                result[option.name] = option.evaluate(input_)
             except OptionError as e:
                 sys.stderr.write('{0}\n'.format(str(e)))
                 is_error = True
