@@ -49,8 +49,8 @@ class Option:
         self.sample = sample
         self.help = help
 
-    def evaluate(self, input_: InputValue) -> Any:
-        if input_.is_none:
+    def evaluate(self, input: InputValue) -> Any:
+        if input.is_none:
             # required check
             if self.required:
                 message = ("the following argument is required '{0:s}'"
@@ -59,14 +59,14 @@ class Option:
         else:
             # choices check
             if self.choices is not None:
-                if input_.value not in self.choices:
+                if input.value not in self.choices:
                     message = (
                         "argument '{0}':invalid choice: {1} (choose from {2})"
                         .format(self.name,
-                                repr(input_.value),
+                                repr(input.value),
                                 ', '.join(map(repr, self.choices))))
                     raise OptionError(message)
-        value = input_.value if not input_.is_none else self.default
+        value = input.value if not input.is_none else self.default
         # type
         if self.type is not None:
             value = self.type(value)
@@ -111,15 +111,15 @@ class OptionList:
         self._list: List[Union[Option, 'OptionList']] = list(options)
         self.help = help
 
-    def evaluate(self, input_: InputValue):
-        if input_.is_none:
-            input_ = InputValue(is_none=True, value={})
+    def evaluate(self, input: InputValue):
+        if input.is_none:
+            input = InputValue(is_none=True, value={})
         result = {}
         is_error = False
         for option in self._list:
             child_input = InputValue(
-                    is_none=option.name not in input_.value,
-                    value=input_.value.get(option.name, None))
+                    is_none=option.name not in input.value,
+                    value=input.value.get(option.name, None))
             try:
                 result[option.name] = option.evaluate(child_input)
             except OptionError as e:
@@ -127,7 +127,7 @@ class OptionList:
                 is_error = True
         # check unrecognized arguments
         unused_key_list = sorted(
-                    set(input_.value.keys())
+                    set(input.value.keys())
                     .difference(option.name for option in self._list))
         if len(unused_key_list) != 0:
             is_error = True
@@ -173,8 +173,8 @@ class ConfigParser:
         self._option_list = option_list
 
     def parse(self, data: Optional[Dict[str, Any]]) -> Any:
-        input_ = InputValue(False, data if data is not None else {})
-        return self._option_list.evaluate(input_)
+        input = InputValue(False, data if data is not None else {})
+        return self._option_list.evaluate(input)
 
     def help_message(self) -> str:
         return '\n'.join(self._option_list.sample_message(indent=0))
