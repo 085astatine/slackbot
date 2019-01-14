@@ -176,5 +176,6 @@ class ConfigParser:
         input = InputValue(False, data if data is not None else {})
         return self._option_list.evaluate(input)
 
-    def help_message(self) -> str:
-        return '\n'.join(self._option_list.sample_message(indent=0))
+    def sample_message(self) -> str:
+        return ''.join('{0}\n'.format(line)
+                       for line in self._option_list.sample_message(indent=0))

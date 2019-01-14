@@ -131,9 +131,8 @@ def create(
     # show example of configuration file
     if option.show_config:
         logger.info('output example of configuration file')
-        sys.stdout.write('{0}\n'.format(
-                    '\n'.join(parser.help_message()
-                              for parser in config_parser_list.values())))
+        for parser in config_parser_list.values():
+            sys.stdout.write(parser.sample_message())
         sys.exit(0)
     # load configuration file
     if option.config is None:
