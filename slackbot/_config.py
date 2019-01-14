@@ -161,6 +161,12 @@ class OptionList:
             line.extend(option.sample_message(indent + 2))
         return line
 
+    def append(self, x: Option) -> None:
+        self._list.append(x)
+
+    def extend(self, iterable: Iterable[Option]) -> None:
+        self._list.extend(iterable)
+
 
 class ConfigParser:
     def __init__(self, name: str, option_list: Tuple[Option, ...]) -> None:
