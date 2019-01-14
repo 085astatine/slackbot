@@ -30,7 +30,7 @@ class Option:
                  choices: Optional[Iterable] = None,
                  required: bool = False,
                  sample: Optional[Any] = None,
-                 help: str = "") -> None:
+                 help: str = '') -> None:
         self.name = name
         if action is not None:
             assert callable(action)
@@ -105,9 +105,11 @@ class OptionList:
     def __init__(
             self,
             name: str,
-            options: Iterable[Union[Option, 'OptionList']]) -> None:
+            options: Iterable[Union[Option, 'OptionList']],
+            help: str = '') -> None:
         self.name = name
         self._list: List[Union[Option, 'OptionList']] = list(options)
+        self.help = help
 
     def evaluate(self, input_: InputValue):
         if input_.is_none:
@@ -152,6 +154,8 @@ class OptionList:
 
     def sample_message(self, indent: int = 0) -> List[str]:
         line = []
+        if self.help:
+            line.append('{0}# {1}'.format(' ' * indent, self.help))
         line.append('{0}{1}:'.format(' ' * indent, self.name))
         for option in self._list:
             line.extend(option.sample_message(indent + 2))
