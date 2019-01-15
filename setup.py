@@ -12,7 +12,7 @@ setup(
         'slackbot',
         'slackbot.action'],
     install_requires=[
-        'pyyaml',
-        'requests',
+        'pyyaml>=4.2b1',
+        'requests>=2.20',
         'slackclient'],
     test_suite='test')
