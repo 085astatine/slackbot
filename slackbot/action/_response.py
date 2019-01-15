@@ -6,7 +6,7 @@ import random
 import re
 from collections import OrderedDict
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
-from .. import Action, Option, OptionError, unescape_text
+from .. import Action, Option, OptionError, OptionList, unescape_text
 from .._team import Channel, User
 
 
@@ -73,7 +73,7 @@ class Response(Action):
                         api['text'])
 
     @staticmethod
-    def option_list() -> Tuple[Option, ...]:
+    def option_list(name: str) -> OptionList:
         # translate to Trigger
         to_trigger: Dict[str, Trigger] = OrderedDict()
         to_trigger['non-reply'] = Trigger.NON_REPLY
@@ -112,42 +112,36 @@ class Response(Action):
             elif hasattr(data, '__iter__') and not isinstance(data, str):
                 for element in data:
                     result.append(parse_pattern(element))
-            else:
+            elif data is not None:
                 message = (
                     'could not convert to Pattern\'s list: \'{0}\''
                     .format(data))
                 raise OptionError(message)
             return result
 
-        # check icon
-        def check_icon(value: str) -> str:
-            if not (_is_emoji(value) or _is_url(value)):
-                message = (
-                        'icon is nether an emoji nor a url: {0}'
-                        .format(value))
-                raise OptionError(message)
-            return value
-
-        return (
-            Option('channel',
-                   action=lambda x: [x] if isinstance(x, str) else x,
-                   default=[],
-                   help='target channel name (list or string)'),
-            Option('trigger',
-                   default='non-reply',
-                   action=lambda x: to_trigger.get(x),
-                   choices=to_trigger.keys(),
-                   help='response trigger'),
-            Option('pattern',
-                   default=(Pattern(call='ping', response='pong'),),
-                   action=parse_pattern_list,
-                   help='response pattern'
-                        ' (default: [{call: ping, response: pong}])'),
-            Option('username',
-                   help='username'),
-            Option('icon',
-                   action=check_icon,
-                   help='user icon (:emoji: or http://url/to/icon)'))
+        return OptionList(
+            name,
+            [Option('channel',
+                    action=lambda x: (
+                            [] if x is None
+                            else [x] if isinstance(x, str)
+                            else x),
+                    default=None,
+                    help='target channel name (list or string)'),
+             Option('trigger',
+                    default='non-reply',
+                    action=lambda x: to_trigger.get(x),
+                    choices=to_trigger.keys(),
+                    help='response trigger'),
+             Option('pattern',
+                    sample=[{'call': ['ping'], 'response': ['pong']}],
+                    action=parse_pattern_list,
+                    help='response pattern'),
+             Option('username',
+                    help='username'),
+             Option('icon',
+                    action=_check_icon,
+                    help='user icon (:emoji: or http://url/to/icon)')])
 
 
 def _response(
@@ -199,4 +193,13 @@ def _is_url(value: str) -> bool:
 
 
 def _is_emoji(value: str) -> bool:
-    return bool( re.match(':[^:]+:', value))
+    return bool(re.match(':[^:]+:', value))
+
+
+def _check_icon(value: Optional[str]) -> Optional[str]:
+    if value is not None and not (_is_emoji(value) or _is_url(value)):
+        message = (
+                'icon is nether an emoji nor a url: {0}'
+                .format(value))
+        raise OptionError(message)
+    return value

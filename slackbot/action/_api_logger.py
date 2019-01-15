@@ -4,7 +4,7 @@ import enum
 import logging
 import pprint
 from typing import Any, Dict, List, Optional, Tuple
-from .. import Action, Option
+from .. import Action, Option, OptionList
 
 
 class Mode(enum.Enum):
@@ -46,22 +46,23 @@ class APILogger(Action):
                         '\n{0}'.format(pprint.pformat(api, indent=2)))
 
     @staticmethod
-    def option_list() -> Tuple[Option, ...]:
-        return (
-            Option('mode',
-                   action=lambda mode: getattr(Mode, mode),
-                   default='raw',
-                   choices=[mode.name for mode in Mode],
-                   help='output format'),
-            Option('ignore_reconnect_url',
-                   type=bool,
-                   default=True,
-                   help='ignore "reconnect_url" api'),
-            Option('ignore_presence_change',
-                   type=bool,
-                   default=True,
-                   help='ignore "presence_change" api'),
-            Option('ignore_user_typing',
-                   type=bool,
-                   default=True,
-                   help='ignore "user_typing" api'))
+    def option_list(name: str) -> OptionList:
+        return OptionList(
+            name,
+            [Option('mode',
+                    action=lambda mode: getattr(Mode, mode),
+                    default='raw',
+                    choices=[mode.name for mode in Mode],
+                    help='output format'),
+             Option('ignore_reconnect_url',
+                    type=bool,
+                    default=True,
+                    help='ignore "reconnect_url" api'),
+             Option('ignore_presence_change',
+                    type=bool,
+                    default=True,
+                    help='ignore "presence_change" api'),
+             Option('ignore_user_typing',
+                    type=bool,
+                    default=True,
+                    help='ignore "user_typing" api')])

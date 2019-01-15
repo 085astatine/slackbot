@@ -8,8 +8,10 @@ import slackbot.action
 
 class DummyAction(slackbot.Action):
     @staticmethod
-    def option_list():
-        return (slackbot.Option('foo', help='bar'),)
+    def option_list(name: str) -> slackbot.OptionList:
+        return slackbot.OptionList(
+            name,
+            [slackbot.Option('foo', help='bar')])
 
 
 if __name__ == '__main__':

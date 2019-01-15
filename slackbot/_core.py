@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple, Type
 import yaml
 from ._action import Action
 from ._client import Client
-from ._config import ConfigParser, Option
+from ._config import ConfigParser, Option, OptionList
 from ._team import Team
 
 
@@ -70,16 +70,17 @@ class Core(Action):
         self._team.update(api_list)
 
     @staticmethod
-    def option_list() -> Tuple[Option, ...]:
-        return (
-            Option('token_file',
-                   required=True,
-                   help='path to the file '
-                        'that Slack Authentification token is written'),
-            Option('interval',
-                   default=1.0,
-                   type=float,
-                   help='interval(seconds) to read real time messaging API'))
+    def option_list(name: str) -> OptionList:
+        return OptionList(
+            name,
+            [Option('token_file',
+                    required=True,
+                    help='path to the file '
+                         'that Slack Authentification token is written'),
+             Option('interval',
+                    default=1.0,
+                    type=float,
+                    help='interval(seconds) to read real time messaging API')])
 
 
 def create(
@@ -123,16 +124,15 @@ def create(
     logger.debug('command line option: {0}'.format(option))
     # config parser
     config_parser_list: Dict[str, ConfigParser] = collections.OrderedDict()
-    config_parser_list['Core'] = ConfigParser('Core', Core.option_list())
+    config_parser_list['Core'] = ConfigParser(Core.option_list('Core'))
     config_parser_list.update(
-                (key, ConfigParser(key, action_dict[key].option_list()))
+                (key, ConfigParser(action_dict[key].option_list(key)))
                 for key in sorted(action_dict.keys()))
     # show example of configuration file
     if option.show_config:
         logger.info('output example of configuration file')
-        sys.stdout.write('{0}\n'.format(
-                    '\n'.join(parser.help_message()
-                              for parser in config_parser_list.values())))
+        for parser in config_parser_list.values():
+            sys.stdout.write(parser.sample_message())
         sys.exit(0)
     # load configuration file
     if option.config is None:

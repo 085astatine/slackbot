@@ -2,7 +2,10 @@
 
 import collections
 import sys
-from typing import Any, Callable, Dict, Iterable, Optional, Tuple, Type
+from typing import (
+        Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Tuple,
+        Type, Union)
+import yaml
 
 
 class OptionError(Exception):
@@ -13,6 +16,11 @@ class OptionError(Exception):
         return self.message
 
 
+class InputValue(NamedTuple):
+    is_none: bool = True
+    value: Any = None
+
+
 class Option:
     def __init__(self,
                  name: str,
@@ -21,7 +29,8 @@ class Option:
                  type: Optional[Type] = None,
                  choices: Optional[Iterable] = None,
                  required: bool = False,
-                 help: str = "") -> None:
+                 sample: Optional[Any] = None,
+                 help: str = '') -> None:
         self.name = name
         if action is not None:
             assert callable(action)
@@ -37,36 +46,30 @@ class Option:
         self.choices = choices
         assert isinstance(required, bool)
         self.required = required
+        self.sample = sample
         self.help = help
 
-    def evaluate(self, data: Dict[str, Any]) -> Any:
-        # required check
-        if self.name not in data or data[self.name] is None:
+    def evaluate(self, input: InputValue) -> Any:
+        if input.is_none:
+            # required check
             if self.required:
                 message = ("the following argument is required '{0:s}'"
                            .format(self.name))
                 raise OptionError(message)
-            # return default value
-            default = self.default
-            if default is not None:
-                if isinstance(self.default, str) and self.type is not None:
-                    default = self.type(default)
-                if self.action is not None:
-                    default = self.action(default)
-            return default
-        value = data[self.name]
+        else:
+            # choices check
+            if self.choices is not None:
+                if input.value not in self.choices:
+                    message = (
+                        "argument '{0}':invalid choice: {1} (choose from {2})"
+                        .format(self.name,
+                                repr(input.value),
+                                ', '.join(map(repr, self.choices))))
+                    raise OptionError(message)
+        value = input.value if not input.is_none else self.default
         # type
-        if callable(self.type):
+        if self.type is not None:
             value = self.type(value)
-        # choices check
-        if self.choices is not None:
-            if value not in self.choices:
-                message = (
-                    "argument '{0}':invalid choice: {1} (choose from {2})"
-                    .format(self.name,
-                            repr(value),
-                            ', '.join(map(repr, self.choices))))
-                raise OptionError(message)
         # action
         if self.action is not None:
             value = self.action(value)
@@ -83,56 +86,96 @@ class Option:
         ss.append('({0})'.format('required' if self.required else 'optional'))
         return ''.join(ss)
 
+    def sample_message(self, indent: int = 0) -> List[str]:
+        line: List[str] = []
+        line.append('{0}# {1}'.format(' ' * indent, self.help_message()))
+        sample = self.sample if self.sample is not None else self.default
+        if sample is not None:
+            yaml_text = yaml.dump(
+                    {self.name: sample},
+                    default_flow_style=False)
+            line.extend('{0}{1}'.format(' ' * indent, line)
+                        for line in yaml_text.strip().split('\n'))
+        else:
+            line.append('{0}{1}:'.format(' ' * indent, self.name))
+        return line
 
-class ConfigParser:
-    def __init__(self, name: str, option_list: Tuple[Option, ...]) -> None:
+
+class OptionList:
+    def __init__(
+            self,
+            name: str,
+            options: Iterable[Union[Option, 'OptionList']],
+            help: str = '') -> None:
         self.name = name
-        self.option_list = option_list
+        self._list: List[Union[Option, 'OptionList']] = list(options)
+        self.help = help
 
-    def parse(self, data: Optional[Dict[str, Any]]) -> Any:
-        if data is None:
-            data = {}
+    def evaluate(self, input: InputValue):
+        if input.is_none:
+            input = InputValue(is_none=True, value={})
         result = {}
         is_error = False
-        for option in self.option_list:
+        for option in self._list:
+            child_input = InputValue(
+                    is_none=option.name not in input.value,
+                    value=input.value.get(option.name, None))
             try:
-                result[option.name] = option.evaluate(data)
+                result[option.name] = option.evaluate(child_input)
             except OptionError as e:
                 sys.stderr.write('{0}\n'.format(str(e)))
                 is_error = True
-        else:  # check unrecognized arguments
-            unused_key_list = sorted(
-                        set(data.keys()).difference(
-                                option.name for option in self.option_list))
-            if len(unused_key_list) != 0:
-                is_error = True
-                sys.stderr.write(
-                        "unrecognized arguments: {0}\n"
-                        .format(', '.join(map(repr, unused_key_list))))
+        # check unrecognized arguments
+        unused_key_list = sorted(
+                    set(input.value.keys())
+                    .difference(option.name for option in self._list))
+        if len(unused_key_list) != 0:
+            is_error = True
+            sys.stderr.write(
+                    '{0} has unrecognized arguments: {1}\n'
+                    .format(self.name, ', '.join(map(repr, unused_key_list))))
         if is_error:
             sys.exit(2)
-        """convert: dict -> namedtuple('_', ...), list -> tuple"""
-        def convert(value: Any) -> Any:
+        """to immutable: dict -> namedtuple('_', ...), list -> tuple"""
+        def to_immutable(value: Any) -> Any:
             if isinstance(value, dict):
                 for key in value.keys():
-                    value[key] = convert(value[key])
+                    value[key] = to_immutable(value[key])
                 return collections.namedtuple('_', value.keys())(**value)
             elif isinstance(value, list):
-                return tuple(convert(i) for i in value)
+                return tuple(to_immutable(i) for i in value)
             else:
                 return value
-        # convert each value of result
-        for key, value in result.items():
-            result[key] = convert(value)
         return collections.namedtuple(
-                    "{}Config".format(self.name),
-                    result.keys())(**result)
+                '{0}Option'.format(self.name),
+                result.keys())(
+                        **dict((key, to_immutable(value))
+                               for key, value in result.items()))
 
-    def help_message(self) -> str:
-        strline = []
-        strline.append('{0}:'.format(self.name))
-        for option in self.option_list:
-            strline.append('  {0}: # {1}'.format(
-                        option.name,
-                        option.help_message()))
-        return '\n'.join(strline)
+    def sample_message(self, indent: int = 0) -> List[str]:
+        line = []
+        if self.help:
+            line.append('{0}# {1}'.format(' ' * indent, self.help))
+        line.append('{0}{1}:'.format(' ' * indent, self.name))
+        for option in self._list:
+            line.extend(option.sample_message(indent + 2))
+        return line
+
+    def append(self, x: Option) -> None:
+        self._list.append(x)
+
+    def extend(self, iterable: Iterable[Option]) -> None:
+        self._list.extend(iterable)
+
+
+class ConfigParser:
+    def __init__(self, option_list: OptionList) -> None:
+        self._option_list = option_list
+
+    def parse(self, data: Optional[Dict[str, Any]]) -> Any:
+        input = InputValue(False, data if data is not None else {})
+        return self._option_list.evaluate(input)
+
+    def sample_message(self) -> str:
+        return ''.join('{0}\n'.format(line)
+                       for line in self._option_list.sample_message(indent=0))
