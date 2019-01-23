@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from typing import Any, Optional, Dict, Generic, List, Optional, Tuple, TypeVar
+from typing import (
+        Any, Dict, Generic, List, NamedTuple, Optional, Tuple, TypeVar)
 from ._client import Client
 from ._config import OptionList
 from ._team import Team
 
 
 OptionType = TypeVar('OptionType')
+
+
+class NoneOption(NamedTuple):
+    pass
 
 
 class Action(Generic[OptionType]):
@@ -47,7 +52,7 @@ class Action(Generic[OptionType]):
 
     @staticmethod
     def option_list(name: str) -> OptionList:
-        return OptionList(name, [])
+        return OptionList(NoneOption, name, [])
 
 
 def escape_text(string: str) -> str:
