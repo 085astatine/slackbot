@@ -3,8 +3,8 @@
 import collections
 import sys
 from typing import (
-        Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Tuple,
-        Type, Union)
+        Any, Callable, Dict, Generic, Iterable, List, NamedTuple, Optional,
+        Tuple, Type, TypeVar, Union)
 import yaml
 
 
@@ -101,17 +101,22 @@ class Option:
         return line
 
 
-class OptionList:
+OptionType = TypeVar('OptionType')
+
+
+class OptionList(Generic[OptionType]):
     def __init__(
             self,
+            type: Callable[..., OptionType],
             name: str,
             options: Iterable[Union[Option, 'OptionList']],
             help: str = '') -> None:
         self.name = name
+        self._type = type
         self._list: List[Union[Option, 'OptionList']] = list(options)
         self.help = help
 
-    def evaluate(self, input: InputValue):
+    def evaluate(self, input: InputValue) -> OptionType:
         if input.is_none:
             input = InputValue(is_none=True, value={})
         result = {}
@@ -146,11 +151,8 @@ class OptionList:
                 return tuple(to_immutable(i) for i in value)
             else:
                 return value
-        return collections.namedtuple(
-                '{0}Option'.format(self.name),
-                result.keys())(
-                        **dict((key, to_immutable(value))
-                               for key, value in result.items()))
+        return self._type(**dict((key, to_immutable(value))
+                                 for key, value in result.items()))
 
     def sample_message(self, indent: int = 0) -> List[str]:
         line = []

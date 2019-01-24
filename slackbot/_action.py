@@ -1,16 +1,24 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from typing import Any, Optional, Dict, List, Optional, Tuple
+from typing import (
+        Any, Dict, Generic, List, NamedTuple, Optional, Tuple, TypeVar)
 from ._client import Client
 from ._config import OptionList
 from ._team import Team
 
 
-class Action:
+OptionType = TypeVar('OptionType')
+
+
+class NoneOption(NamedTuple):
+    pass
+
+
+class Action(Generic[OptionType]):
     def __init__(self,
                  name: str,
-                 config: Any,
+                 config: OptionType,
                  key: Optional[str] = None,
                  logger: Optional[logging.Logger] = None) -> None:
         # logger
@@ -35,7 +43,7 @@ class Action:
         return self._name
 
     @property
-    def config(self) -> Any:
+    def config(self) -> OptionType:
         return self._config
 
     @property
@@ -44,7 +52,7 @@ class Action:
 
     @staticmethod
     def option_list(name: str) -> OptionList:
-        return OptionList(name, [])
+        return OptionList(NoneOption, name, [])
 
 
 def escape_text(string: str) -> str:

@@ -3,7 +3,7 @@
 import enum
 import logging
 import pprint
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple
 from .. import Action, Option, OptionList
 
 
@@ -12,11 +12,18 @@ class Mode(enum.Enum):
     pprint = enum.auto()
 
 
-class APILogger(Action):
+class APILoggerOption(NamedTuple):
+    mode: Mode
+    ignore_reconnect_url: bool
+    ignore_presence_change: bool
+    ignore_user_typing: bool
+
+
+class APILogger(Action[APILoggerOption]):
     def __init__(
             self,
             name: str,
-            config: Any,
+            config: APILoggerOption,
             key: Optional[str] = None,
             logger: Optional[logging.Logger] = None) -> None:
         super().__init__(
@@ -48,6 +55,7 @@ class APILogger(Action):
     @staticmethod
     def option_list(name: str) -> OptionList:
         return OptionList(
+            APILoggerOption,
             name,
             [Option('mode',
                     action=lambda mode: getattr(Mode, mode),

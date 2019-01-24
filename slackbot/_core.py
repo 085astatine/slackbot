@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-
 import argparse
 import collections
 import logging
@@ -8,7 +7,7 @@ import pathlib
 import sys
 import threading
 import time
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type
 import yaml
 from ._action import Action
 from ._client import Client
@@ -16,11 +15,16 @@ from ._config import ConfigParser, Option, OptionList
 from ._team import Team
 
 
-class Core(Action):
+class CoreOption(NamedTuple):
+    token_file: pathlib.Path
+    interval: float
+
+
+class Core(Action[CoreOption]):
     def __init__(self,
                  name: str,
                  args: argparse.Namespace,
-                 config: Any,
+                 config: CoreOption,
                  action_dict: Dict[str, Action] = None,
                  logger: Optional[logging.Logger] = None) -> None:
         super().__init__(
@@ -72,6 +76,7 @@ class Core(Action):
     @staticmethod
     def option_list(name: str) -> OptionList:
         return OptionList(
+            CoreOption,
             name,
             [Option('token_file',
                     required=True,
