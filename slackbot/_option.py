@@ -170,7 +170,7 @@ class OptionList(Generic[OptionType]):
         self._list.extend(iterable)
 
 
-class ConfigParser:
+class OptionParser:
     def __init__(self, option_list: OptionList) -> None:
         self._option_list = option_list
 

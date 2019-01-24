@@ -57,12 +57,12 @@ class Response(Action[ResponseOption]):
     def __init__(
             self,
             name: str,
-            config: ResponseOption,
+            option: ResponseOption,
             key: Optional[str] = None,
             logger: Optional[logging.Logger] = None) -> None:
         super().__init__(
                 name,
-                config,
+                option,
                 key=key,
                 logger=logger or logging.getLogger(__name__))
 
@@ -70,7 +70,7 @@ class Response(Action[ResponseOption]):
         for api in api_list:
             if api['type'] == 'message' and 'subtype' not in api:
                 channel = self.team.channel_list.id_search(api['channel'])
-                if channel is None or channel.name not in self.config.channel:
+                if channel is None or channel.name not in self.option.channel:
                     continue
                 user = self.team.user_list.id_search(api['user'])
                 if user is None:
@@ -165,7 +165,7 @@ def _response(
     if not match:
         return
     text = unescape_text(match.group('text'))
-    for pattern in self.config.pattern:
+    for pattern in self.option.pattern:
         if text not in pattern.call:
             continue
         # params
@@ -176,20 +176,20 @@ def _response(
         if (self.team.bot is not None
                 and match.group('reply_to') == self.team.bot.id):
             params['text'] += '<@{0}> '.format(user.id)
-            if self.config.trigger == Trigger.NON_REPLY:
+            if self.option.trigger == Trigger.NON_REPLY:
                 return
-        elif self.config.trigger == Trigger.REPLY:
+        elif self.option.trigger == Trigger.REPLY:
             return
         params['text'] += random.choice(pattern.response)
         # username
-        if self.config.username is not None:
-            params['username'] = self.config.username
+        if self.option.username is not None:
+            params['username'] = self.option.username
         # icon
-        if self.config.icon is not None:
-            if _is_emoji(self.config.icon):
-                params['icon_emoji'] = self.config.icon
-            elif _is_url(self.config.icon):
-                params['icon_url'] = self.config.icon
+        if self.option.icon is not None:
+            if _is_emoji(self.option.icon):
+                params['icon_emoji'] = self.option.icon
+            elif _is_url(self.option.icon):
+                params['icon_url'] = self.option.icon
         # api call
         self._logger.info(
                 "call from '{0}' on '{1}'".format(user.name, channel.name))

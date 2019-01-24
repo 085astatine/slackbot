@@ -136,12 +136,12 @@ class Download(Action[DownloadOption]):
     def __init__(
             self,
             name: str,
-            config: DownloadOption,
+            option: DownloadOption,
             key: Optional[str] = None,
             logger: Optional[logging.Logger] = None) -> None:
         super().__init__(
                 name,
-                config,
+                option,
                 key=key,
                 logger=logger or logging.getLogger(__name__))
         self._process_list: List[DownloadReport] = []
@@ -150,9 +150,9 @@ class Download(Action[DownloadOption]):
         for api in api_list:
             if api['type'] == 'message' and 'subtype' not in api:
                 channel = self.team.channel_list.id_search(api['channel'])
-                if channel is None or channel.name not in self.config.channel:
+                if channel is None or channel.name not in self.option.channel:
                     continue
-                match = self.config.pattern.match(api['text'].strip())
+                match = self.option.pattern.match(api['text'].strip())
                 if match:
                     name = match.group('name')
                     url = match.group('url')
@@ -160,19 +160,19 @@ class Download(Action[DownloadOption]):
                                 name,
                                 url))
                     # create process
-                    path = self.config.destination_directory.joinpath(name)
+                    path = self.option.destination_directory.joinpath(name)
                     process = DownloadReport(
                                 self._client,
                                 path,
                                 url,
                                 channel,
-                                least_size=self.config.least_size,
+                                least_size=self.option.least_size,
                                 logger=self._logger.getChild('report'))
                     process.start(
-                                chunk_size=self.config.chunk_size,
-                                report_interval=self.config.report_interval,
-                                speedmeter_size=self.config.speedmeter_size,
-                                permission=self.config.file_permission)
+                                chunk_size=self.option.chunk_size,
+                                report_interval=self.option.report_interval,
+                                speedmeter_size=self.option.speedmeter_size,
+                                permission=self.option.file_permission)
                     self._process_list.append(process)
         # update process list
         finished_process_list = [

@@ -23,32 +23,32 @@ class APILogger(Action[APILoggerOption]):
     def __init__(
             self,
             name: str,
-            config: APILoggerOption,
+            option: APILoggerOption,
             key: Optional[str] = None,
             logger: Optional[logging.Logger] = None) -> None:
         super().__init__(
                 name,
-                config,
+                option,
                 key=key,
                 logger=logger or logging.getLogger(__name__))
 
     def run(self, api_list: List[Dict[str, Any]]) -> None:
         for api in api_list:
             # ignore check
-            if (self.config.ignore_reconnect_url
+            if (self.option.ignore_reconnect_url
                     and api['type'] == 'reconnect_url'):
                 continue
-            if (self.config.ignore_presence_change
+            if (self.option.ignore_presence_change
                     and api['type'] == 'presence_change'):
                 continue
-            if (self.config.ignore_user_typing
+            if (self.option.ignore_user_typing
                     and api['type'] == 'user_typing'):
                 continue
             # raw
-            if self.config.mode is Mode.raw:
+            if self.option.mode is Mode.raw:
                 self._logger.info(repr(api))
             # pprint
-            elif self.config.mode is Mode.pprint:
+            elif self.option.mode is Mode.pprint:
                 self._logger.info(
                         '\n{0}'.format(pprint.pformat(api, indent=2)))
 
