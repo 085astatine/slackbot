@@ -11,7 +11,7 @@ from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type
 import yaml
 from ._action import Action
 from ._client import Client
-from ._config import ConfigParser, Option, OptionList
+from ._option import ConfigParser, Option, OptionList
 from ._team import Team
 
 

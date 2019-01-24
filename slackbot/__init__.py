@@ -2,4 +2,4 @@
 
 from ._action import Action, escape_text, unescape_text
 from ._core import create
-from ._config import Option, OptionError, OptionList
+from ._option import Option, OptionError, OptionList

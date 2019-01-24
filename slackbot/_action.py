@@ -4,7 +4,7 @@ import logging
 from typing import (
         Any, Dict, Generic, List, NamedTuple, Optional, Tuple, TypeVar)
 from ._client import Client
-from ._config import OptionList
+from ._option import OptionList
 from ._team import Team
 
 
