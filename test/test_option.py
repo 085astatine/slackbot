@@ -3,6 +3,7 @@
 import os
 import sys
 import unittest
+from typing import Any, NamedTuple
 import slackbot
 
 
@@ -148,7 +149,12 @@ class OptionSampleTest(unittest.TestCase):
 
 class OptionParserTest(unittest.TestCase):
     def test_plain(self):
+        class TestOption(NamedTuple):
+            foo: Any
+            bar: Any
+
         parser = slackbot._option.OptionParser(slackbot.OptionList(
+                TestOption,
                 'Test',
                 [slackbot.Option('foo'),
                  slackbot.Option('bar')]))
@@ -158,7 +164,11 @@ class OptionParserTest(unittest.TestCase):
         self.assertEqual(result.bar, '1')
 
     def test_dict(self):
+        class TestOption(NamedTuple):
+            foo: Any
+
         parser = slackbot._option.OptionParser(slackbot.OptionList(
+                TestOption,
                 'Test',
                 [slackbot.Option('foo')]))
         data = {'foo': {'bar': '0', 'baz': '1'}}
@@ -167,7 +177,11 @@ class OptionParserTest(unittest.TestCase):
         self.assertEqual(result.foo.baz, '1')
 
     def test_list(self):
+        class TestOption(NamedTuple):
+            foo: Any
+
         parser = slackbot._option.OptionParser(slackbot.OptionList(
+                TestOption,
                 'Test',
                 [slackbot.Option('foo')]))
         data = {'foo': ['bar', 'baz']}
@@ -176,7 +190,11 @@ class OptionParserTest(unittest.TestCase):
         self.assertEqual(result.foo[1], 'baz')
 
     def test_dict_in_list(self):
+        class TestOption(NamedTuple):
+            foo: Any
+
         parser = slackbot._option.OptionParser(slackbot.OptionList(
+                TestOption,
                 'Test',
                 [slackbot.Option('foo')]))
         data = {'foo': [{'bar': '0'}, {'baz': '1'}]}
@@ -185,7 +203,11 @@ class OptionParserTest(unittest.TestCase):
         self.assertEqual(result.foo[1].baz, '1')
 
     def test_list_in_dict(self):
+        class TestOption(NamedTuple):
+            foo: Any
+
         parser = slackbot._option.OptionParser(slackbot.OptionList(
+                TestOption,
                 'Test',
                 [slackbot.Option('foo')]))
         data = {'foo': {'bar': ['0', '1']}}
@@ -205,7 +227,11 @@ class OptionParserExitTest(unittest.TestCase):
         self._stderr = None
 
     def test_unrecognized_argumets(self):
+        class TestOption(NamedTuple):
+            foo: Any
+
         parser = slackbot._option.OptionParser(slackbot.OptionList(
+                TestOption,
                 'Test',
                 [slackbot.Option('foo')]))
         data = {'foo': '0', 'bar': '1'}
@@ -214,7 +240,11 @@ class OptionParserExitTest(unittest.TestCase):
         self.assertEqual(cm.exception.code, 2)
 
     def test_required_failed(self):
+        class TestOption(NamedTuple):
+            foo: Any
+
         parser = slackbot._option.OptionParser(slackbot.OptionList(
+                TestOption,
                 'Test',
                 [slackbot.Option('foo', required=True)]))
         data = {}
@@ -223,7 +253,11 @@ class OptionParserExitTest(unittest.TestCase):
         self.assertEqual(cm.exception.code, 2)
 
     def test_choices_failed(self):
+        class TestOption(NamedTuple):
+            foo: Any
+
         parser = slackbot._option.OptionParser(slackbot.OptionList(
+                TestOption,
                 'Test',
                 [slackbot.Option('foo', choices=('bar', 'baz'))]))
         data = {'foo': 'foo'}
@@ -234,7 +268,12 @@ class OptionParserExitTest(unittest.TestCase):
 
 class OptionParserHelpTest(unittest.TestCase):
     def test_plane(self):
+        class TestOption(NamedTuple):
+            foo: Any
+            bar: Any
+
         parser = slackbot._option.OptionParser(slackbot.OptionList(
+                TestOption,
                 'Test',
                 [slackbot.Option('foo'),
                  slackbot.Option('bar')],
