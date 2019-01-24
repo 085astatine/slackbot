@@ -5,7 +5,8 @@ import logging
 import random
 import re
 from collections import OrderedDict
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import (
+        Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union)
 from .. import Action, Option, OptionError, OptionList, unescape_text
 from .._team import Channel, User
 
@@ -44,11 +45,19 @@ class Pattern:
                 repr(self.response))
 
 
-class Response(Action):
+class ResponseOption(NamedTuple):
+    channel: List[str]
+    trigger: Trigger
+    pattern: Tuple[Pattern, ...]
+    username: Optional[str]
+    icon: Optional[str]
+
+
+class Response(Action[ResponseOption]):
     def __init__(
             self,
             name: str,
-            config: Any,
+            config: ResponseOption,
             key: Optional[str] = None,
             logger: Optional[logging.Logger] = None) -> None:
         super().__init__(
@@ -120,6 +129,7 @@ class Response(Action):
             return result
 
         return OptionList(
+            ResponseOption,
             name,
             [Option('channel',
                     action=lambda x: (

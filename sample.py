@@ -2,14 +2,20 @@
 # -*- coding: utf-8 -*-
 
 import logging
+from typing import Any, NamedTuple
 import slackbot
 import slackbot.action
 
 
-class DummyAction(slackbot.Action):
+class DummyOption(NamedTuple):
+    foo: Any
+
+
+class DummyAction(slackbot.Action[DummyOption]):
     @staticmethod
     def option_list(name: str) -> slackbot.OptionList:
         return slackbot.OptionList(
+            DummyOption,
             name,
             [slackbot.Option('foo', help='bar')])
 

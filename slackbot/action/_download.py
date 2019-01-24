@@ -4,12 +4,23 @@ import datetime
 import logging
 import pathlib
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, NamedTuple, Optional, Pattern, Tuple
 import requests
 from .. import Action, Option, OptionList
 from .._client import Client
 from .._team import Channel
 from ._download_thread import DownloadObserver, DownloadProgress
+
+
+class DownloadOption(NamedTuple):
+    channel: List[str]
+    pattern: Pattern
+    destination_directory: pathlib.Path
+    chunk_size: int
+    report_interval: float
+    speedmeter_size: int
+    least_size: Optional[int]
+    file_permission: Optional[int]
 
 
 class DownloadReport(DownloadObserver):
@@ -121,11 +132,11 @@ class DownloadReport(DownloadObserver):
                     'response: {0}'.format(response))
 
 
-class Download(Action):
+class Download(Action[DownloadOption]):
     def __init__(
             self,
             name: str,
-            config: Any,
+            config: DownloadOption,
             key: Optional[str] = None,
             logger: Optional[logging.Logger] = None) -> None:
         super().__init__(
@@ -180,6 +191,7 @@ class Download(Action):
             return None
 
         return OptionList(
+            DownloadOption,
             name,
             [Option('channel',
                     action=lambda x: (
