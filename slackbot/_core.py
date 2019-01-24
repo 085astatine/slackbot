@@ -24,12 +24,12 @@ class Core(Action[CoreOption]):
     def __init__(self,
                  name: str,
                  args: argparse.Namespace,
-                 config: CoreOption,
+                 option: CoreOption,
                  action_dict: Dict[str, Action] = None,
                  logger: Optional[logging.Logger] = None) -> None:
         super().__init__(
                     name,
-                    config,
+                    option,
                     logger=logger or logging.getLogger(__name__))
         self._args = args
         self._action_dict = action_dict or {}
@@ -39,7 +39,7 @@ class Core(Action[CoreOption]):
 
     def initialize(self) -> None:
         # load token
-        token_file = pathlib.Path(self.config.token_file)
+        token_file = pathlib.Path(self.option.token_file)
         if not token_file.exists():
             self._logger.error("token file '{0}' does not exist"
                                .format(token_file.resolve().as_posix()))
@@ -59,7 +59,7 @@ class Core(Action[CoreOption]):
             while True:
                 timer = threading.Thread(
                             name='CoreTimer',
-                            target=lambda: time.sleep(self.config.interval))
+                            target=lambda: time.sleep(self.option.interval))
                 timer.start()
                 api_list = self._client.rtm_read()
                 for action in self._action_dict.values():

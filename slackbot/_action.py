@@ -18,7 +18,7 @@ class NoneOption(NamedTuple):
 class Action(Generic[OptionType]):
     def __init__(self,
                  name: str,
-                 config: OptionType,
+                 option: OptionType,
                  key: Optional[str] = None,
                  logger: Optional[logging.Logger] = None) -> None:
         # logger
@@ -28,7 +28,7 @@ class Action(Generic[OptionType]):
             assert isinstance(self._logger, logging.Logger)
         # parameter
         self._name = name
-        self._config = config
+        self._option = option
         self._key = key
         self._client = Client(key=self._key, logger=self._logger)
 
@@ -43,8 +43,8 @@ class Action(Generic[OptionType]):
         return self._name
 
     @property
-    def config(self) -> OptionType:
-        return self._config
+    def option(self) -> OptionType:
+        return self._option
 
     @property
     def team(self) -> Team:
