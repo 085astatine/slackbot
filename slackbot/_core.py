@@ -11,7 +11,7 @@ from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type
 import yaml
 from ._action import Action
 from ._client import Client
-from ._option import ConfigParser, Option, OptionList
+from ._option import Option, OptionList, OptionParser
 from ._team import Team
 
 
@@ -127,16 +127,16 @@ def create(
     if option.verbose:
         logger.setLevel(logging.DEBUG)
     logger.debug('command line option: {0}'.format(option))
-    # config parser
-    config_parser_list: Dict[str, ConfigParser] = collections.OrderedDict()
-    config_parser_list['Core'] = ConfigParser(Core.option_list('Core'))
-    config_parser_list.update(
-                (key, ConfigParser(action_dict[key].option_list(key)))
+    # option parser
+    option_parser_list: Dict[str, OptionParser] = collections.OrderedDict()
+    option_parser_list['Core'] = OptionParser(Core.option_list('Core'))
+    option_parser_list.update(
+                (key, OptionParser(action_dict[key].option_list(key)))
                 for key in sorted(action_dict.keys()))
     # show example of configuration file
     if option.show_config:
         logger.info('output example of configuration file')
-        for parser in config_parser_list.values():
+        for parser in option_parser_list.values():
             sys.stdout.write(parser.sample_message())
         sys.exit(0)
     # load configuration file
@@ -152,15 +152,15 @@ def create(
         sys.stderr.write('{0}\n'.format(message))
         sys.exit(1)
     config_yaml = yaml.load(option.config.open())
-    config_dict = {key: parser.parse(config_yaml.get(key, None))
-                   for key, parser in config_parser_list.items()}
-    logger.debug('config: {0}'.format(config_dict))
+    option_dict = {key: parser.parse(config_yaml.get(key, None))
+                   for key, parser in option_parser_list.items()}
+    logger.debug('config: {0}'.format(option_dict))
     return Core(name,
                 option,
-                config_dict['Core'],
+                option_dict['Core'],
                 action_dict={
                     key: action(key,
-                                config_dict[key],
+                                option_dict[key],
                                 logger=logger.getChild(key))
                     for key, action in action_dict.items()},
                 logger=logger)

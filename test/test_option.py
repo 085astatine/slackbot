@@ -146,9 +146,9 @@ class OptionSampleTest(unittest.TestCase):
                  'foo: FOO'])
 
 
-class ConfigParserTest(unittest.TestCase):
+class OptionParserTest(unittest.TestCase):
     def test_plain(self):
-        parser = slackbot._option.ConfigParser(slackbot.OptionList(
+        parser = slackbot._option.OptionParser(slackbot.OptionList(
                 'Test',
                 [slackbot.Option('foo'),
                  slackbot.Option('bar')]))
@@ -158,7 +158,7 @@ class ConfigParserTest(unittest.TestCase):
         self.assertEqual(result.bar, '1')
 
     def test_dict(self):
-        parser = slackbot._option.ConfigParser(slackbot.OptionList(
+        parser = slackbot._option.OptionParser(slackbot.OptionList(
                 'Test',
                 [slackbot.Option('foo')]))
         data = {'foo': {'bar': '0', 'baz': '1'}}
@@ -167,7 +167,7 @@ class ConfigParserTest(unittest.TestCase):
         self.assertEqual(result.foo.baz, '1')
 
     def test_list(self):
-        parser = slackbot._option.ConfigParser(slackbot.OptionList(
+        parser = slackbot._option.OptionParser(slackbot.OptionList(
                 'Test',
                 [slackbot.Option('foo')]))
         data = {'foo': ['bar', 'baz']}
@@ -176,7 +176,7 @@ class ConfigParserTest(unittest.TestCase):
         self.assertEqual(result.foo[1], 'baz')
 
     def test_dict_in_list(self):
-        parser = slackbot._option.ConfigParser(slackbot.OptionList(
+        parser = slackbot._option.OptionParser(slackbot.OptionList(
                 'Test',
                 [slackbot.Option('foo')]))
         data = {'foo': [{'bar': '0'}, {'baz': '1'}]}
@@ -185,7 +185,7 @@ class ConfigParserTest(unittest.TestCase):
         self.assertEqual(result.foo[1].baz, '1')
 
     def test_list_in_dict(self):
-        parser = slackbot._option.ConfigParser(slackbot.OptionList(
+        parser = slackbot._option.OptionParser(slackbot.OptionList(
                 'Test',
                 [slackbot.Option('foo')]))
         data = {'foo': {'bar': ['0', '1']}}
@@ -194,7 +194,7 @@ class ConfigParserTest(unittest.TestCase):
         self.assertEqual(result.foo.bar[1], '1')
 
 
-class ConfigParserExitTest(unittest.TestCase):
+class OptionParserExitTest(unittest.TestCase):
     def setUp(self):
         self._stderr = sys.stderr
         sys.stderr = open(os.devnull, mode='w')
@@ -205,7 +205,7 @@ class ConfigParserExitTest(unittest.TestCase):
         self._stderr = None
 
     def test_unrecognized_argumets(self):
-        parser = slackbot._option.ConfigParser(slackbot.OptionList(
+        parser = slackbot._option.OptionParser(slackbot.OptionList(
                 'Test',
                 [slackbot.Option('foo')]))
         data = {'foo': '0', 'bar': '1'}
@@ -214,7 +214,7 @@ class ConfigParserExitTest(unittest.TestCase):
         self.assertEqual(cm.exception.code, 2)
 
     def test_required_failed(self):
-        parser = slackbot._option.ConfigParser(slackbot.OptionList(
+        parser = slackbot._option.OptionParser(slackbot.OptionList(
                 'Test',
                 [slackbot.Option('foo', required=True)]))
         data = {}
@@ -223,7 +223,7 @@ class ConfigParserExitTest(unittest.TestCase):
         self.assertEqual(cm.exception.code, 2)
 
     def test_choices_failed(self):
-        parser = slackbot._option.ConfigParser(slackbot.OptionList(
+        parser = slackbot._option.OptionParser(slackbot.OptionList(
                 'Test',
                 [slackbot.Option('foo', choices=('bar', 'baz'))]))
         data = {'foo': 'foo'}
@@ -232,9 +232,9 @@ class ConfigParserExitTest(unittest.TestCase):
         self.assertEqual(cm.exception.code, 2)
 
 
-class ConfigParserHelpTest(unittest.TestCase):
+class OptionParserHelpTest(unittest.TestCase):
     def test_plane(self):
-        parser = slackbot._option.ConfigParser(slackbot.OptionList(
+        parser = slackbot._option.OptionParser(slackbot.OptionList(
                 'Test',
                 [slackbot.Option('foo'),
                  slackbot.Option('bar')],
