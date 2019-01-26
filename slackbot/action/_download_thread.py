@@ -9,7 +9,7 @@ import shutil
 import tempfile
 import threading
 import time
-from typing import Deque, NamedTuple, Optional, Tuple, Union
+from typing import Deque, NamedTuple, Optional, Union
 import requests
 from .. import Option, OptionList
 
@@ -51,6 +51,27 @@ class DownloadThreadOption(NamedTuple):
                     default='0o644',
                     help='downloaded file permission (format: 0oXXX)')],
             help=help)
+
+
+class SpeedMeter:
+    class Data(NamedTuple):
+        value: float
+        time: float
+
+    def __init__(self, size: int) -> None:
+        self._deque: Deque[SpeedMeter.Data] = collections.deque(maxlen=size)
+
+    def push(self, value: float) -> None:
+        self._deque.append(SpeedMeter.Data(
+                value=value,
+                time=time.perf_counter()))
+
+    def speed(self) -> Optional[float]:
+        if len(self._deque) == 0:
+            return None
+        valuedelta = self._deque[-1].value - self._deque[0].value
+        timedelta = self._deque[-1].time - self._deque[0].time
+        return valuedelta / timedelta if timedelta != 0 else None
 
 
 class DownloadProgress:
@@ -299,9 +320,8 @@ class DownloadThread(threading.Thread):
                              if content_length.isdigit()
                              else None)
                 # initialize speed meter
-                speedmeter: Deque[Tuple[float, float]] = collections.deque(
-                            maxlen=self._option.speedmeter_size)
-                speedmeter.append((downloaded_size, present_time))
+                speedmeter = SpeedMeter(self._option.speedmeter_size)
+                speedmeter.push(downloaded_size)
                 # download
                 for data in response.iter_content(
                         chunk_size=self._option.chunk_size):
@@ -310,23 +330,17 @@ class DownloadThread(threading.Thread):
                     # update time
                     present_time = time.perf_counter()
                     # update speedmeter
-                    speedmeter.append((downloaded_size, present_time))
+                    speedmeter.push(downloaded_size)
                     # progress report
                     if (present_time - report_time
                             > self._option.report_interval):
-                        # download speed
-                        download_speed = (
-                                (speedmeter[-1][0] - speedmeter[0][0])
-                                / (speedmeter[-1][1] - speedmeter[0][1])
-                                if speedmeter[-1][1] != speedmeter[0][1]
-                                else None)
                         # progress report
                         progress = DownloadProgress(
                                     file_size=file_size,
                                     downloaded_size=downloaded_size,
                                     start_time=start_time,
                                     present_time=present_time,
-                                    download_speed=download_speed)
+                                    download_speed=speedmeter.speed())
                         self._observer._receive_progress(progress)
                         # update report time
                         report_time = present_time
