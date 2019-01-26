@@ -6,5 +6,6 @@ from ._download_thread import (
     DownloadException,
     DownloadObserver,
     DownloadProgress,
-    DownloadThread)
+    DownloadThread,
+    DownloadThreadOption)
 from ._response import Response

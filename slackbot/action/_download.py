@@ -9,18 +9,16 @@ import requests
 from .. import Action, Option, OptionList
 from .._client import Client
 from .._team import Channel
-from ._download_thread import DownloadObserver, DownloadProgress
+from ._download_thread import (
+        DownloadObserver, DownloadProgress, DownloadThreadOption)
 
 
 class DownloadOption(NamedTuple):
     channel: List[str]
     pattern: Pattern
     destination_directory: pathlib.Path
-    chunk_size: int
-    report_interval: float
-    speedmeter_size: int
     least_size: Optional[int]
-    file_permission: Optional[int]
+    thread: DownloadThreadOption
 
 
 class DownloadReport(DownloadObserver):
@@ -168,11 +166,7 @@ class Download(Action[DownloadOption]):
                                 channel,
                                 least_size=self.option.least_size,
                                 logger=self._logger.getChild('report'))
-                    process.start(
-                                chunk_size=self.option.chunk_size,
-                                report_interval=self.option.report_interval,
-                                speedmeter_size=self.option.speedmeter_size,
-                                permission=self.option.file_permission)
+                    process.start(self.option.thread)
                     self._process_list.append(process)
         # update process list
         finished_process_list = [
@@ -183,13 +177,6 @@ class Download(Action[DownloadOption]):
 
     @staticmethod
     def option_list(name: str) -> OptionList:
-        # parse permission (format 0oXXX)
-        def read_permission(value: str) -> Optional[int]:
-            match = re.match('0o(?P<permission>[0-7]{3})', value)
-            if match:
-                return int(match.group('permission'), base=8)
-            return None
-
         return OptionList(
             DownloadOption,
             name,
@@ -211,25 +198,10 @@ class Download(Action[DownloadOption]):
                     action=lambda x: pathlib.Path().joinpath(x),
                     default='./download',
                     help='directory where files are saved'),
-             Option('chunk_size',
-                    default=1024,
-                    type=int,
-                    help='data chank size (byte) for streaming download'),
-             Option('report_interval',
-                    default=60.0,
-                    type=float,
-                    help=('interval in seconds'
-                          ' between download progress reports')),
-             Option('speedmeter_size',
-                    default=100,
-                    type=int,
-                    help=('number of data chunks'
-                          ' for download speed measurement')),
              Option('least_size',
                     action=lambda x: int(x) if x is not None else None,
                     help='minimun file size'
                          ' to be concidered successful download'),
-             Option('file_permission',
-                    action=read_permission,
-                    default='0o644',
-                    help='downloaded file permission (format: 0oXXX)')])
+             DownloadThreadOption.option_list(
+                    name='thread',
+                    help='download thread')])

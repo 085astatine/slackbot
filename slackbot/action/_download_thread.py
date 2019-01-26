@@ -4,12 +4,53 @@ import collections
 import datetime
 import logging
 import pathlib
+import re
 import shutil
 import tempfile
 import threading
 import time
-from typing import Deque, Optional, Tuple, Union
+from typing import Deque, NamedTuple, Optional, Tuple, Union
 import requests
+from .. import Option, OptionList
+
+
+class DownloadThreadOption(NamedTuple):
+    chunk_size: int
+    report_interval: float
+    speedmeter_size: int
+    file_permission: Optional[int]
+
+    @staticmethod
+    def option_list(name: str, help: str = '') -> OptionList:
+        # parse permission (format 0oXXX)
+        def read_permission(value: str) -> Optional[int]:
+            match = re.match('0o(?P<permission>[0-7]{3})', value)
+            if match:
+                return int(match.group('permission'), base=8)
+            return None
+
+        return OptionList(
+            DownloadThreadOption,
+            name,
+            [Option('chunk_size',
+                    default=1024,
+                    type=int,
+                    help='data chank size (byte) for streaming download'),
+             Option('report_interval',
+                    default=60.0,
+                    type=float,
+                    help=('interval in seconds'
+                          ' between download progress reports')),
+             Option('speedmeter_size',
+                    default=100,
+                    type=int,
+                    help=('number of data chunks'
+                          ' for download speed measurement')),
+             Option('file_permission',
+                    action=read_permission,
+                    default='0o644',
+                    help='downloaded file permission (format: 0oXXX)')],
+            help=help)
 
 
 class DownloadProgress:
@@ -118,12 +159,12 @@ class DownloadObserver:
         self._is_finished = False
         self._lock = threading.Lock()
 
-    def start(self, **kwargs) -> None:
+    def start(self, option: DownloadThreadOption) -> None:
         thread = DownloadThread(
                     observer=self,
                     path=self._path,
                     url=self._url,
-                    **kwargs)
+                    option=option)
         thread.start()
 
     def is_finished(self) -> bool:
@@ -217,18 +258,12 @@ class DownloadThread(threading.Thread):
                 observer: DownloadObserver,
                 path: pathlib.Path,
                 url: str,
-                chunk_size: int = 1024,
-                report_interval: float = 5.0,
-                speedmeter_size: int = 100,
-                permission: Optional[int] = None) -> None:
+                option: DownloadThreadOption) -> None:
         threading.Thread.__init__(self)
         self._observer = observer
         self._path = path
         self._url = url
-        self._chunk_size = chunk_size
-        self._report_interval = report_interval
-        self._speedmeter_size = speedmeter_size
-        self._permission = permission
+        self._option = option
 
     def run(self) -> None:
         # mkdir
@@ -265,10 +300,11 @@ class DownloadThread(threading.Thread):
                              else None)
                 # initialize speed meter
                 speedmeter: Deque[Tuple[float, float]] = collections.deque(
-                            maxlen=self._speedmeter_size)
+                            maxlen=self._option.speedmeter_size)
                 speedmeter.append((downloaded_size, present_time))
                 # download
-                for data in response.iter_content(chunk_size=self._chunk_size):
+                for data in response.iter_content(
+                        chunk_size=self._option.chunk_size):
                     temp_file.write(data)
                     downloaded_size += len(data)
                     # update time
@@ -276,7 +312,8 @@ class DownloadThread(threading.Thread):
                     # update speedmeter
                     speedmeter.append((downloaded_size, present_time))
                     # progress report
-                    if present_time - report_time > self._report_interval:
+                    if (present_time - report_time
+                            > self._option.report_interval):
                         # download speed
                         download_speed = (
                                 (speedmeter[-1][0] - speedmeter[0][0])
@@ -309,8 +346,8 @@ class DownloadThread(threading.Thread):
                     index += 1
             shutil.move(temp_file_path.as_posix(), save_path.as_posix())
         # chmod
-        if self._permission is not None:
-            save_path.chmod(self._permission)
+        if self._option.file_permission is not None:
+            save_path.chmod(self._option.file_permission)
         # finish report
         progress = DownloadProgress(
                     file_size=file_size,
