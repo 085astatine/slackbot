@@ -76,17 +76,19 @@ class SpeedMeter:
 
 class DownloadProgress:
     def __init__(
-                self,
-                file_size: Optional[int],
-                downloaded_size: int,
-                start_time: float,
-                present_time: float,
-                download_speed: Optional[float]) -> None:
+            self,
+            file_size: Optional[int],
+            speedmeter_size: int) -> None:
+        self._start_time = time.perf_counter()
+        self._latest_time = self._start_time
         self._file_size = file_size
-        self._downloaded_size = downloaded_size
-        self._start_time = start_time
-        self._present_time = present_time
-        self._download_speed = download_speed
+        self._downloaded_size = 0
+        self._speedmeter = SpeedMeter(speedmeter_size)
+
+    def update(self, size: int) -> None:
+        self._downloaded_size += size
+        self._latest_time = time.perf_counter()
+        self._speedmeter.push(self._downloaded_size)
 
     @property
     def file_size(self) -> Optional[int]:
@@ -112,11 +114,11 @@ class DownloadProgress:
 
     @property
     def elapsed_time(self) -> float:
-        return self._present_time - self._start_time
+        return self._latest_time - self._start_time
 
     @property
     def download_speed(self) -> Optional[float]:
-        return self._download_speed
+        return self._speedmeter.speed()
 
     @property
     def average_download_speed(self) -> Optional[float]:
@@ -296,9 +298,6 @@ class DownloadThread(threading.Thread):
                         delete=False,
                         dir=self._path.parent.as_posix()) as temp_file:
             temp_file_path = pathlib.Path(temp_file.name)
-            # initialize parameter
-            file_size: Optional[int] = None
-            downloaded_size = 0
             # initialize time
             start_time = time.perf_counter()
             present_time = start_time
@@ -319,28 +318,22 @@ class DownloadThread(threading.Thread):
                 file_size = (int(content_length)
                              if content_length.isdigit()
                              else None)
-                # initialize speed meter
-                speedmeter = SpeedMeter(self._option.speedmeter_size)
-                speedmeter.push(downloaded_size)
+                # initialize progress
+                progress = DownloadProgress(
+                        file_size,
+                        self._option.speedmeter_size)
                 # download
                 for data in response.iter_content(
                         chunk_size=self._option.chunk_size):
                     temp_file.write(data)
-                    downloaded_size += len(data)
+                    # update progress
+                    progress.update(len(data))
                     # update time
                     present_time = time.perf_counter()
-                    # update speedmeter
-                    speedmeter.push(downloaded_size)
                     # progress report
                     if (present_time - report_time
                             > self._option.report_interval):
                         # progress report
-                        progress = DownloadProgress(
-                                    file_size=file_size,
-                                    downloaded_size=downloaded_size,
-                                    start_time=start_time,
-                                    present_time=present_time,
-                                    download_speed=speedmeter.speed())
                         self._observer._receive_progress(progress)
                         # update report time
                         report_time = present_time
@@ -363,12 +356,6 @@ class DownloadThread(threading.Thread):
         if self._option.file_permission is not None:
             save_path.chmod(self._option.file_permission)
         # finish report
-        progress = DownloadProgress(
-                    file_size=file_size,
-                    downloaded_size=downloaded_size,
-                    start_time=start_time,
-                    present_time=time.perf_counter(),
-                    download_speed=None)
         self._observer._receive_finish(
                     progress,
                     save_path)
