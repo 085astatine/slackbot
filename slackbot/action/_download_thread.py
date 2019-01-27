@@ -11,7 +11,8 @@ import tempfile
 import threading
 import time
 import queue
-from typing import Deque, MutableMapping, NamedTuple, Optional, Union
+from typing import (
+        Deque, Generic, MutableMapping, NamedTuple, Optional, TypeVar, Union)
 import requests
 from .. import Option, OptionList
 
@@ -170,8 +171,12 @@ class DownloadReportType(enum.Enum):
     ERROR = enum.auto()
 
 
-class DownloadReport(NamedTuple):
+ReportInfo = TypeVar('ReportInfo')
+
+
+class DownloadReport(NamedTuple, Generic[ReportInfo]):
     type: DownloadReportType
+    info: ReportInfo
     url: str
     path: pathlib.Path
     temp_path: Optional[pathlib.Path]
@@ -181,10 +186,11 @@ class DownloadReport(NamedTuple):
     error: Optional[Exception] = None
 
 
-class Reporter:
+class Reporter(Generic[ReportInfo]):
     def __init__(
             self,
-            report_queue: queue.Queue[DownloadReport],
+            info: ReportInfo,
+            report_queue: queue.Queue[DownloadReport[ReportInfo]],
             url: str,
             path: pathlib.Path,
             speedmeter_size: int,
@@ -194,6 +200,7 @@ class Reporter:
         self._report_time = time.perf_counter()
         self._report_interval = progress_report_interval
         # report parameter
+        self._info = info
         self._url = url
         self._path = path
         self._temp_path: Optional[pathlib.Path] = None
@@ -237,9 +244,12 @@ class Reporter:
         # report
         self.report(DownloadReportType.ERROR)
 
-    def create_report(self, type: DownloadReportType) -> DownloadReport:
+    def create_report(
+            self,
+            type: DownloadReportType) -> DownloadReport[ReportInfo]:
         return DownloadReport(
                 type=type,
+                info=self._info,
                 url=self._url,
                 path=self._path,
                 temp_path=self._temp_path,
