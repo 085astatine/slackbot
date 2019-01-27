@@ -174,16 +174,36 @@ class DownloadReportType(enum.Enum):
 ReportInfo = TypeVar('ReportInfo')
 
 
-class DownloadReport(NamedTuple, Generic[ReportInfo]):
-    type: DownloadReportType
-    info: ReportInfo
-    url: str
-    path: pathlib.Path
-    temp_path: Optional[pathlib.Path]
-    response_header: Optional[MutableMapping[str, str]]
-    progress: ProgressReport
-    saved_path: Optional[pathlib.Path] = None
-    error: Optional[Exception] = None
+class DownloadReport(Generic[ReportInfo]):
+    def __init__(
+            self,
+            type: DownloadReportType,
+            info: ReportInfo,
+            url: str,
+            path: pathlib.Path,
+            temp_path: Optional[pathlib.Path],
+            response_header: Optional[MutableMapping[str, str]],
+            progress: ProgressReport,
+            saved_path: Optional[pathlib.Path] = None,
+            error: Optional[Exception] = None) -> None:
+        self.type = type
+        self.info = info
+        self.url = url
+        self.path = path
+        self.temp_path = temp_path
+        self.response_header = response_header
+        self.progress = progress
+        self.saved_path = saved_path
+        self.error = error
+
+    def __repr__(self) -> str:
+        keys = ['type', 'info', 'url', 'path', 'temp_path', 'response_header',
+                'progress', 'saved_path', 'error']
+        return '{0}.{1}({2})'.format(
+                self.__class__.__module__,
+                self.__class__.__name__,
+                ', '.join('{0}={1}'.format(key, repr(getattr(self, key)))
+                          for key in keys))
 
 
 class Reporter(Generic[ReportInfo]):
