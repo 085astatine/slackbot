@@ -2,6 +2,7 @@
 
 import collections
 import datetime
+import enum
 import logging
 import pathlib
 import re
@@ -9,7 +10,7 @@ import shutil
 import tempfile
 import threading
 import time
-from typing import Deque, NamedTuple, Optional, Union
+from typing import Deque, Dict, NamedTuple, Optional, Union
 import requests
 from .. import Option, OptionList
 
@@ -128,6 +129,7 @@ class ProgressReport(NamedTuple):
                 .format(precision=precision)
                 .format(value=value / unit, unit=prefix_list[unit_index]))
 
+
 class Progress:
     def __init__(
             self,
@@ -158,6 +160,24 @@ class DownloadException(Exception):
 
     def __str__(self) -> str:
         return 'status code [{0}]'.format(self._response.status_code)
+
+
+class DownloadReportType(enum.Enum):
+    START = enum.auto()
+    PROGRESS = enum.auto()
+    FINISH = enum.auto()
+    ERROR = enum.auto()
+
+
+class DownloadReport(NamedTuple):
+    type: DownloadReportType
+    url: str
+    path: pathlib.Path
+    temp_path: pathlib.Path
+    response_header: Dict[str, str]
+    progress: ProgressReport
+    saved_path: Optional[pathlib.Path] = None
+    error: Optional[Exception] = None
 
 
 class DownloadObserver:
