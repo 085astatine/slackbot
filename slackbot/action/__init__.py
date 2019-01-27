@@ -5,7 +5,7 @@ from ._download import Download, DownloadReport
 from ._download_thread import (
     DownloadException,
     DownloadObserver,
-    DownloadProgress,
     DownloadThread,
-    DownloadThreadOption)
+    DownloadThreadOption,
+    ProgressReport)
 from ._response import Response

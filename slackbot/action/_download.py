@@ -10,7 +10,7 @@ from .. import Action, Option, OptionList
 from .._client import Client
 from .._team import Channel
 from ._download_thread import (
-        DownloadObserver, DownloadProgress, DownloadThreadOption)
+        DownloadObserver, DownloadThreadOption, ProgressReport)
 
 
 class DownloadOption(NamedTuple):
@@ -50,13 +50,13 @@ class DownloadReport(DownloadObserver):
         message = '[{0}]:start <{1}> (size: {2})'.format(
                     self.path.name,
                     response.url,
-                    DownloadProgress.format_bytes(file_size))
+                    ProgressReport.format_bytes(file_size))
         self._post_message(message)
 
-    def _receive_progress(self, progress: DownloadProgress) -> None:
+    def _receive_progress(self, progress: ProgressReport) -> None:
         super()._receive_progress(progress)
         # post message
-        format_bytes = DownloadProgress.format_bytes
+        format_bytes = ProgressReport.format_bytes
         message = []
         message.append('[{0}]:progress'.format(self.path.name))
         if progress.file_size is not None:
@@ -68,7 +68,7 @@ class DownloadReport(DownloadObserver):
             message.append('{0}'.format(
                         format_bytes(progress.downloaded_size)))
         message.append('{0}/s'.format(
-                    format_bytes(progress.download_speed)))
+                    format_bytes(progress.speed)))
         message.append('in {0}'.format(
                     str(datetime.timedelta(seconds=progress.elapsed_time))))
         if progress.remaining_time is not None:
@@ -79,11 +79,11 @@ class DownloadReport(DownloadObserver):
 
     def _receive_finish(
                 self,
-                progress: DownloadProgress,
+                progress: ProgressReport,
                 save_path: pathlib.Path) -> None:
         super()._receive_finish(progress, save_path)
         # post message
-        format_bytes = DownloadProgress.format_bytes
+        format_bytes = ProgressReport.format_bytes
         message = []
         if save_path == self.path:
             message.append('[{0}]:finish'.format(self.path.name))
@@ -93,7 +93,7 @@ class DownloadReport(DownloadObserver):
                         save_path.name))
         message.append(' {0} at {1}/s in {2}'.format(
                     format_bytes(progress.downloaded_size),
-                    format_bytes(progress.average_download_speed),
+                    format_bytes(progress.average_speed),
                     str(datetime.timedelta(seconds=progress.elapsed_time))))
         self._post_message(' '.join(message))
         # file size check

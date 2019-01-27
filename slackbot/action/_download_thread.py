@@ -74,29 +74,11 @@ class SpeedMeter:
         return valuedelta / timedelta if timedelta != 0 else None
 
 
-class DownloadProgress:
-    def __init__(
-            self,
-            file_size: Optional[int],
-            speedmeter_size: int) -> None:
-        self._start_time = time.perf_counter()
-        self._latest_time = self._start_time
-        self._file_size = file_size
-        self._downloaded_size = 0
-        self._speedmeter = SpeedMeter(speedmeter_size)
-
-    def update(self, size: int) -> None:
-        self._downloaded_size += size
-        self._latest_time = time.perf_counter()
-        self._speedmeter.push(self._downloaded_size)
-
-    @property
-    def file_size(self) -> Optional[int]:
-        return self._file_size
-
-    @property
-    def downloaded_size(self) -> int:
-        return self._downloaded_size
+class ProgressReport(NamedTuple):
+    file_size: Optional[int]
+    downloaded_size: int
+    elapsed_time: float
+    speed: Optional[float]
 
     @property
     def remaining_size(self) -> Optional[int]:
@@ -107,21 +89,13 @@ class DownloadProgress:
 
     @property
     def progress_rate(self) -> Optional[float]:
-        if (self.file_size is not None) and (self.file_size > 0):
+        if self.file_size is not None and self.file_size > 0:
             return self.downloaded_size / self.file_size
         else:
             return None
 
     @property
-    def elapsed_time(self) -> float:
-        return self._latest_time - self._start_time
-
-    @property
-    def download_speed(self) -> Optional[float]:
-        return self._speedmeter.speed()
-
-    @property
-    def average_download_speed(self) -> Optional[float]:
+    def average_speed(self) -> Optional[float]:
         if self.elapsed_time > 0:
             return self.downloaded_size / self.elapsed_time
         else:
@@ -129,14 +103,12 @@ class DownloadProgress:
 
     @property
     def remaining_time(self) -> Optional[float]:
-        if self.file_size is None:
-            return None
-        elif (self.download_speed is None
-              or self.remaining_size is None
-              or self.download_speed <= 0.0):
-            return None
+        if (self.remaining_size is not None
+                and self.speed is not None
+                and self.speed > 0):
+            return self.remaining_size / self.speed
         else:
-            return self.remaining_size / self.download_speed
+            return None
 
     @staticmethod
     def format_bytes(
@@ -155,6 +127,29 @@ class DownloadProgress:
         return ('{{value:.{precision}f}}{{unit}}B'
                 .format(precision=precision)
                 .format(value=value / unit, unit=prefix_list[unit_index]))
+
+class Progress:
+    def __init__(
+            self,
+            file_size: Optional[int],
+            speedmeter_size: int) -> None:
+        self._start_time = time.perf_counter()
+        self._latest_time = self._start_time
+        self._file_size = file_size
+        self._downloaded_size = 0
+        self._speedmeter = SpeedMeter(speedmeter_size)
+
+    def update(self, size: int) -> None:
+        self._downloaded_size += size
+        self._latest_time = time.perf_counter()
+        self._speedmeter.push(self._downloaded_size)
+
+    def report(self) -> ProgressReport:
+        return ProgressReport(
+                file_size=self._file_size,
+                downloaded_size=self._downloaded_size,
+                elapsed_time=self._latest_time - self._start_time,
+                speed=self._speedmeter.speed())
 
 
 class DownloadException(Exception):
@@ -219,8 +214,8 @@ class DownloadObserver:
                     self._path.name,
                     response.headers))
 
-    def _receive_progress(self, progress: DownloadProgress) -> None:
-        format_bytes = DownloadProgress.format_bytes
+    def _receive_progress(self, progress: ProgressReport) -> None:
+        format_bytes = ProgressReport.format_bytes
         message = []
         # progress rate
         if progress.file_size is not None:
@@ -234,7 +229,7 @@ class DownloadObserver:
                     format_bytes(progress.file_size)))
         # speed
         message.append('{0}/s'.format(
-                    format_bytes(progress.download_speed)))
+                    format_bytes(progress.speed)))
         # elapsed time
         message.append('in {0}'.format(
                     str(datetime.timedelta(seconds=progress.elapsed_time))))
@@ -245,9 +240,9 @@ class DownloadObserver:
 
     def _receive_finish(
                 self,
-                progress: DownloadProgress,
+                progress: ProgressReport,
                 save_path: pathlib.Path) -> None:
-        format_bytes = DownloadProgress.format_bytes
+        format_bytes = ProgressReport.format_bytes
         message = []
         if save_path == self._path:
             message.append('[{0}]:finish'.format(self._path.name))
@@ -257,7 +252,7 @@ class DownloadObserver:
                         save_path.name))
         message.append('{0} ({1}/s) in {2}'.format(
                     format_bytes(progress.downloaded_size),
-                    format_bytes(progress.average_download_speed),
+                    format_bytes(progress.average_speed),
                     str(datetime.timedelta(seconds=progress.elapsed_time))))
         self._logger.info(' '.join(message))
         with self._lock:
@@ -319,7 +314,7 @@ class DownloadThread(threading.Thread):
                              if content_length.isdigit()
                              else None)
                 # initialize progress
-                progress = DownloadProgress(
+                progress = Progress(
                         file_size,
                         self._option.speedmeter_size)
                 # download
@@ -334,7 +329,7 @@ class DownloadThread(threading.Thread):
                     if (present_time - report_time
                             > self._option.report_interval):
                         # progress report
-                        self._observer._receive_progress(progress)
+                        self._observer._receive_progress(progress.report())
                         # update report time
                         report_time = present_time
             except (DownloadException, requests.RequestException) as error:
@@ -357,5 +352,5 @@ class DownloadThread(threading.Thread):
             save_path.chmod(self._option.file_permission)
         # finish report
         self._observer._receive_finish(
-                    progress,
+                    progress.report(),
                     save_path)
