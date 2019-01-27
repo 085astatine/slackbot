@@ -10,7 +10,8 @@ import shutil
 import tempfile
 import threading
 import time
-from typing import Deque, Dict, NamedTuple, Optional, Union
+import queue
+from typing import Deque, MutableMapping, NamedTuple, Optional, Union
 import requests
 from .. import Option, OptionList
 
@@ -141,8 +142,8 @@ class Progress:
         self._downloaded_size = 0
         self._speedmeter = SpeedMeter(speedmeter_size)
 
-    def update(self, size: int) -> None:
-        self._downloaded_size += size
+    def update(self, received_size: int) -> None:
+        self._downloaded_size += received_size
         self._latest_time = time.perf_counter()
         self._speedmeter.push(self._downloaded_size)
 
@@ -173,11 +174,82 @@ class DownloadReport(NamedTuple):
     type: DownloadReportType
     url: str
     path: pathlib.Path
-    temp_path: pathlib.Path
-    response_header: Dict[str, str]
+    temp_path: Optional[pathlib.Path]
+    response_header: Optional[MutableMapping[str, str]]
     progress: ProgressReport
     saved_path: Optional[pathlib.Path] = None
     error: Optional[Exception] = None
+
+
+class Reporter:
+    def __init__(
+            self,
+            report_queue: queue.Queue[DownloadReport],
+            url: str,
+            path: pathlib.Path,
+            speedmeter_size: int,
+            progress_report_interval: float) -> None:
+        self._report_queue = report_queue
+        # timer
+        self._report_time = time.perf_counter()
+        self._report_interval = progress_report_interval
+        # report parameter
+        self._url = url
+        self._path = path
+        self._temp_path: Optional[pathlib.Path] = None
+        self._response_header: Optional[MutableMapping[str, str]] = None
+        self._saved_path: Optional[pathlib.Path] = None
+        self._error: Optional[Exception] = None
+        # progress
+        self._speedmeter_size = speedmeter_size
+        self._progress = Progress(None, self._speedmeter_size)
+
+    def start(
+            self,
+            temp_path: pathlib.Path,
+            response_header: MutableMapping[str, str]) -> None:
+        self._temp_path = temp_path
+        self._response_header = response_header
+        # progress
+        content_length = response_header.get('Content-Length', '')
+        file_size = int(content_length) if content_length.isdigit() else None
+        self._progress = Progress(file_size, self._speedmeter_size)
+        # start report
+        self._report_time = time.perf_counter()
+        self.report(DownloadReportType.START)
+
+    def update_progress(self, received_size: int) -> None:
+        # update progress
+        self._progress.update(received_size)
+        # report
+        current_time = time.perf_counter()
+        if current_time - self._report_time > self._report_interval:
+            self._report_time = current_time
+            self.report(DownloadReportType.PROGRESS)
+
+    def finish(self, saved_path: pathlib.Path) -> None:
+        self._saved_path = saved_path
+        # report
+        self.report(DownloadReportType.FINISH)
+
+    def error(self, error: Exception) -> None:
+        self._error = error
+        # report
+        self.report(DownloadReportType.ERROR)
+
+    def create_report(self, type: DownloadReportType) -> DownloadReport:
+        return DownloadReport(
+                type=type,
+                url=self._url,
+                path=self._path,
+                temp_path=self._temp_path,
+                response_header=self._response_header,
+                progress=self._progress.report(),
+                saved_path=self._saved_path,
+                error=self._error)
+
+    def report(self, type: DownloadReportType) -> None:
+        self._report_queue.put(self.create_report(type))
 
 
 class DownloadObserver:
