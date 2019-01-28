@@ -113,24 +113,6 @@ class ProgressReport(NamedTuple):
         else:
             return None
 
-    @staticmethod
-    def format_bytes(
-                value: Union[int, float, None],
-                precision: int = 2) -> str:
-        if value is None:
-            return '-B'
-        prefix_list = ('', 'Ki', 'Mi', 'Gi', 'Ti')
-        integer_part = value
-        unit = 1
-        unit_index = 0
-        while integer_part >= 1024 and unit_index < len(prefix_list) - 1:
-            integer_part //= 1024
-            unit *= 1024
-            unit_index += 1
-        return ('{{value:.{precision}f}}{{unit}}B'
-                .format(precision=precision)
-                .format(value=value / unit, unit=prefix_list[unit_index]))
-
 
 class Progress:
     def __init__(
@@ -204,6 +186,24 @@ class DownloadReport(Generic[ReportInfo]):
                 self.__class__.__name__,
                 ', '.join('{0}={1}'.format(key, repr(getattr(self, key)))
                           for key in keys))
+
+    @staticmethod
+    def format_bytes(
+                value: Union[int, float, None],
+                precision: int = 2) -> str:
+        if value is None:
+            return '-B'
+        prefix_list = ('', 'Ki', 'Mi', 'Gi', 'Ti')
+        integer_part = value
+        unit = 1
+        unit_index = 0
+        while integer_part >= 1024 and unit_index < len(prefix_list) - 1:
+            integer_part //= 1024
+            unit *= 1024
+            unit_index += 1
+        return ('{{value:.{precision}f}}{{unit}}B'
+                .format(precision=precision)
+                .format(value=value / unit, unit=prefix_list[unit_index]))
 
 
 class Reporter(Generic[ReportInfo]):
