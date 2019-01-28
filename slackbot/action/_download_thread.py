@@ -2,37 +2,86 @@
 
 import collections
 import datetime
+import enum
 import logging
 import pathlib
+import re
 import shutil
 import tempfile
 import threading
 import time
-from typing import Deque, Optional, Tuple, Union
+import queue
+from typing import (
+        Deque, Generic, MutableMapping, NamedTuple, Optional, TypeVar, Union)
 import requests
+from .. import Option, OptionList
 
 
-class DownloadProgress:
-    def __init__(
-                self,
-                file_size: Optional[int],
-                downloaded_size: int,
-                start_time: float,
-                present_time: float,
-                download_speed: Optional[float]) -> None:
-        self._file_size = file_size
-        self._downloaded_size = downloaded_size
-        self._start_time = start_time
-        self._present_time = present_time
-        self._download_speed = download_speed
+class DownloadThreadOption(NamedTuple):
+    chunk_size: int
+    report_interval: float
+    speedmeter_size: int
+    file_permission: Optional[int]
 
-    @property
-    def file_size(self) -> Optional[int]:
-        return self._file_size
+    @staticmethod
+    def option_list(name: str, help: str = '') -> OptionList:
+        # parse permission (format 0oXXX)
+        def read_permission(value: str) -> Optional[int]:
+            match = re.match('0o(?P<permission>[0-7]{3})', value)
+            if match:
+                return int(match.group('permission'), base=8)
+            return None
 
-    @property
-    def downloaded_size(self) -> int:
-        return self._downloaded_size
+        return OptionList(
+            DownloadThreadOption,
+            name,
+            [Option('chunk_size',
+                    default=1024,
+                    type=int,
+                    help='data chank size (byte) for streaming download'),
+             Option('report_interval',
+                    default=60.0,
+                    type=float,
+                    help=('interval in seconds'
+                          ' between download progress reports')),
+             Option('speedmeter_size',
+                    default=100,
+                    type=int,
+                    help=('number of data chunks'
+                          ' for download speed measurement')),
+             Option('file_permission',
+                    action=read_permission,
+                    default='0o644',
+                    help='downloaded file permission (format: 0oXXX)')],
+            help=help)
+
+
+class SpeedMeter:
+    class Data(NamedTuple):
+        value: float
+        time: float
+
+    def __init__(self, size: int) -> None:
+        self._deque: Deque[SpeedMeter.Data] = collections.deque(maxlen=size)
+
+    def push(self, value: float) -> None:
+        self._deque.append(SpeedMeter.Data(
+                value=value,
+                time=time.perf_counter()))
+
+    def speed(self) -> Optional[float]:
+        if len(self._deque) == 0:
+            return None
+        valuedelta = self._deque[-1].value - self._deque[0].value
+        timedelta = self._deque[-1].time - self._deque[0].time
+        return valuedelta / timedelta if timedelta != 0 else None
+
+
+class ProgressReport(NamedTuple):
+    file_size: Optional[int]
+    downloaded_size: int
+    elapsed_time: float
+    speed: Optional[float]
 
     @property
     def remaining_size(self) -> Optional[int]:
@@ -43,21 +92,13 @@ class DownloadProgress:
 
     @property
     def progress_rate(self) -> Optional[float]:
-        if (self.file_size is not None) and (self.file_size > 0):
+        if self.file_size is not None and self.file_size > 0:
             return self.downloaded_size / self.file_size
         else:
             return None
 
     @property
-    def elapsed_time(self) -> float:
-        return self._present_time - self._start_time
-
-    @property
-    def download_speed(self) -> Optional[float]:
-        return self._download_speed
-
-    @property
-    def average_download_speed(self) -> Optional[float]:
+    def average_speed(self) -> Optional[float]:
         if self.elapsed_time > 0:
             return self.downloaded_size / self.elapsed_time
         else:
@@ -65,14 +106,89 @@ class DownloadProgress:
 
     @property
     def remaining_time(self) -> Optional[float]:
-        if self.file_size is None:
-            return None
-        elif (self.download_speed is None
-              or self.remaining_size is None
-              or self.download_speed <= 0.0):
-            return None
+        if (self.remaining_size is not None
+                and self.speed is not None
+                and self.speed > 0):
+            return self.remaining_size / self.speed
         else:
-            return self.remaining_size / self.download_speed
+            return None
+
+
+class Progress:
+    def __init__(
+            self,
+            file_size: Optional[int],
+            speedmeter_size: int) -> None:
+        self._start_time = time.perf_counter()
+        self._latest_time = self._start_time
+        self._file_size = file_size
+        self._downloaded_size = 0
+        self._speedmeter = SpeedMeter(speedmeter_size)
+        self._speedmeter.push(0)
+
+    def update(self, received_size: int) -> None:
+        self._downloaded_size += received_size
+        self._latest_time = time.perf_counter()
+        self._speedmeter.push(self._downloaded_size)
+
+    def report(self) -> ProgressReport:
+        return ProgressReport(
+                file_size=self._file_size,
+                downloaded_size=self._downloaded_size,
+                elapsed_time=self._latest_time - self._start_time,
+                speed=self._speedmeter.speed())
+
+
+class DownloadException(Exception):
+    def __init__(self, response: requests.models.Response) -> None:
+        self._response = response
+
+    def __str__(self) -> str:
+        return 'status code [{0}]'.format(self._response.status_code)
+
+
+class DownloadReportType(enum.Enum):
+    START = enum.auto()
+    PROGRESS = enum.auto()
+    FINISH = enum.auto()
+    ERROR = enum.auto()
+
+
+ReportInfo = TypeVar('ReportInfo')
+
+
+class DownloadReport(Generic[ReportInfo]):
+    def __init__(
+            self,
+            type: DownloadReportType,
+            info: ReportInfo,
+            url: str,
+            path: pathlib.Path,
+            temp_path: Optional[pathlib.Path],
+            final_url: Optional[str],
+            response_header: Optional[MutableMapping[str, str]],
+            progress: ProgressReport,
+            saved_path: Optional[pathlib.Path] = None,
+            error: Optional[Exception] = None) -> None:
+        self.type = type
+        self.info = info
+        self.url = url
+        self.path = path
+        self.temp_path = temp_path
+        self.final_url = final_url
+        self.response_header = response_header
+        self.progress = progress
+        self.saved_path = saved_path
+        self.error = error
+
+    def __repr__(self) -> str:
+        keys = ['type', 'info', 'url', 'path', 'temp_path', 'final_url',
+                'response_header', 'progress', 'saved_path', 'error']
+        return '{0}.{1}({2})'.format(
+                self.__class__.__module__,
+                self.__class__.__name__,
+                ', '.join('{0}={1}'.format(key, repr(getattr(self, key)))
+                          for key in keys))
 
     @staticmethod
     def format_bytes(
@@ -93,144 +209,111 @@ class DownloadProgress:
                 .format(value=value / unit, unit=prefix_list[unit_index]))
 
 
-class DownloadException(Exception):
-    def __init__(self, response: requests.models.Response) -> None:
-        self._response = response
-
-    def __str__(self) -> str:
-        return 'status code [{0}]'.format(self._response.status_code)
-
-
-class DownloadObserver:
+class Reporter(Generic[ReportInfo]):
     def __init__(
-                self,
-                path: Union[str, pathlib.Path],
-                url: str,
-                logger: Optional[logging.Logger] = None) -> None:
-        self._path = (path
-                      if isinstance(path, pathlib.Path)
-                      else pathlib.Path(path))
+            self,
+            info: ReportInfo,
+            report_queue: 'queue.Queue[DownloadReport[ReportInfo]]',
+            url: str,
+            path: pathlib.Path,
+            speedmeter_size: int,
+            progress_report_interval: float) -> None:
+        self._report_queue = report_queue
+        # timer
+        self._report_time = time.perf_counter()
+        self._report_interval = progress_report_interval
+        # report parameter
+        self._info = info
         self._url = url
-        if not hasattr(self, '_logger'):
-            self._logger = logger or logging.getLogger(__name__)
-        else:
-            assert isinstance(self._logger, logging.Logger)
-        self._is_finished = False
-        self._lock = threading.Lock()
+        self._path = path
+        self._temp_path: Optional[pathlib.Path] = None
+        self._response_header: Optional[MutableMapping[str, str]] = None
+        self._saved_path: Optional[pathlib.Path] = None
+        self._error: Optional[Exception] = None
+        # progress
+        self._speedmeter_size = speedmeter_size
+        self._progress = Progress(None, self._speedmeter_size)
 
-    def start(self, **kwargs) -> None:
-        thread = DownloadThread(
-                    observer=self,
-                    path=self._path,
-                    url=self._url,
-                    **kwargs)
-        thread.start()
+    def start(
+            self,
+            temp_path: pathlib.Path,
+            response: requests.Response) -> None:
+        self._temp_path = temp_path
+        self._final_url = response.url
+        self._response_header = response.headers
+        # progress
+        content_length = response.headers.get('Content-Length', '')
+        file_size = int(content_length) if content_length.isdigit() else None
+        self._progress = Progress(file_size, self._speedmeter_size)
+        # start report
+        self._report_time = time.perf_counter()
+        self.report(DownloadReportType.START)
 
-    def is_finished(self) -> bool:
-        with self._lock:
-            return self._is_finished
+    def update_progress(self, received_size: int) -> None:
+        # update progress
+        self._progress.update(received_size)
+        # report
+        current_time = time.perf_counter()
+        if current_time - self._report_time > self._report_interval:
+            self._report_time = current_time
+            self.report(DownloadReportType.PROGRESS)
 
-    @property
-    def path(self) -> pathlib.Path:
-        return self._path
+    def finish(self, saved_path: pathlib.Path) -> None:
+        self._saved_path = saved_path
+        # report
+        self.report(DownloadReportType.FINISH)
 
-    @property
-    def url(self) -> str:
-        return self._url
+    def error(self, error: Exception) -> None:
+        self._error = error
+        # report
+        self.report(DownloadReportType.ERROR)
 
-    def _receive_start(
-                self,
-                temp_file_path: pathlib.Path,
-                response: requests.models.Response) -> None:
-        self._logger.info('[{0}] url: {1}'.format(
-                    self._path.name,
-                    response.url))
-        self._logger.info('[{0}] file size: {1}'.format(
-                    self._path.name,
-                    response.headers.get('Content-Length')))
-        self._logger.debug('[{0}] temp file: {1}'.format(
-                    self._path.name,
-                    temp_file_path.as_posix()))
-        self._logger.debug('[{0}] header: {1}'.format(
-                    self._path.name,
-                    response.headers))
+    def create_report(
+            self,
+            type: DownloadReportType) -> DownloadReport[ReportInfo]:
+        return DownloadReport(
+                type=type,
+                info=self._info,
+                url=self._url,
+                path=self._path,
+                temp_path=self._temp_path,
+                final_url=self._final_url,
+                response_header=self._response_header,
+                progress=self._progress.report(),
+                saved_path=self._saved_path,
+                error=self._error)
 
-    def _receive_progress(self, progress: DownloadProgress) -> None:
-        format_bytes = DownloadProgress.format_bytes
-        message = []
-        # progress rate
-        if progress.file_size is not None:
-            message.append('{0}/{1} ({2:.2%})'.format(
-                    format_bytes(progress.downloaded_size),
-                    format_bytes(progress.file_size),
-                    progress.progress_rate))
-        else:
-            message.append('{0}/{1}'.format(
-                    format_bytes(progress.downloaded_size),
-                    format_bytes(progress.file_size)))
-        # speed
-        message.append('{0}/s'.format(
-                    format_bytes(progress.download_speed)))
-        # elapsed time
-        message.append('in {0}'.format(
-                    str(datetime.timedelta(seconds=progress.elapsed_time))))
-        # output to logger
-        self._logger.debug('[{0}] progress: {1}'.format(
-                    self._path.name,
-                    ' '.join(message)))
-
-    def _receive_finish(
-                self,
-                progress: DownloadProgress,
-                save_path: pathlib.Path) -> None:
-        format_bytes = DownloadProgress.format_bytes
-        message = []
-        if save_path == self._path:
-            message.append('[{0}]:finish'.format(self._path.name))
-        else:
-            message.append('[{0}] -> [{1}]:finish'.format(
-                        self._path.name,
-                        save_path.name))
-        message.append('{0} ({1}/s) in {2}'.format(
-                    format_bytes(progress.downloaded_size),
-                    format_bytes(progress.average_download_speed),
-                    str(datetime.timedelta(seconds=progress.elapsed_time))))
-        self._logger.info(' '.join(message))
-        with self._lock:
-            self._is_finished = True
-
-    def _receive_error(self, error: Exception) -> None:
-        self._logger.error('[{0}] {1}: {2}'.format(
-                    self._path.name,
-                    error.__class__.__name__,
-                    str(error)))
-        with self._lock:
-            self._is_finished = True
+    def report(self, type: DownloadReportType) -> None:
+        self._report_queue.put(self.create_report(type))
 
 
 _move_file_lock = threading.Lock()
 
 
-class DownloadThread(threading.Thread):
+class DownloadThread(threading.Thread, Generic[ReportInfo]):
     def __init__(
                 self,
-                observer: DownloadObserver,
+                info: ReportInfo,
+                report_queue: 'queue.Queue[DownloadReport[ReportInfo]]',
                 path: pathlib.Path,
                 url: str,
-                chunk_size: int = 1024,
-                report_interval: float = 5.0,
-                speedmeter_size: int = 100,
-                permission: Optional[int] = None) -> None:
+                option: DownloadThreadOption) -> None:
         threading.Thread.__init__(self)
-        self._observer = observer
+        self._info = info
+        self._report_queue = report_queue
         self._path = path
         self._url = url
-        self._chunk_size = chunk_size
-        self._report_interval = report_interval
-        self._speedmeter_size = speedmeter_size
-        self._permission = permission
+        self._option = option
 
     def run(self) -> None:
+        # reporter
+        reporter = Reporter(
+                info=self._info,
+                report_queue=self._report_queue,
+                url=self._url,
+                path=self._path,
+                speedmeter_size=self._option.speedmeter_size,
+                progress_report_interval=self._option.report_interval)
         # mkdir
         if not self._path.parent.exists():
             self._path.parent.mkdir(parents=True)
@@ -240,13 +323,6 @@ class DownloadThread(threading.Thread):
                         delete=False,
                         dir=self._path.parent.as_posix()) as temp_file:
             temp_file_path = pathlib.Path(temp_file.name)
-            # initialize parameter
-            file_size: Optional[int] = None
-            downloaded_size = 0
-            # initialize time
-            start_time = time.perf_counter()
-            present_time = start_time
-            report_time = start_time
             try:
                 # streaming download
                 response = requests.get(self._url, stream=True)
@@ -255,46 +331,17 @@ class DownloadThread(threading.Thread):
                         or (response.status_code // 100 == 5)):
                     raise DownloadException(response)
                 # start report
-                self._observer._receive_start(
-                            temp_file_path,
-                            response)
-                # file size
-                content_length = response.headers.get('Content-Length', '')
-                file_size = (int(content_length)
-                             if content_length.isdigit()
-                             else None)
-                # initialize speed meter
-                speedmeter: Deque[Tuple[float, float]] = collections.deque(
-                            maxlen=self._speedmeter_size)
-                speedmeter.append((downloaded_size, present_time))
+                reporter.start(
+                        temp_path=temp_file_path,
+                        response=response)
                 # download
-                for data in response.iter_content(chunk_size=self._chunk_size):
+                for data in response.iter_content(
+                        chunk_size=self._option.chunk_size):
                     temp_file.write(data)
-                    downloaded_size += len(data)
-                    # update time
-                    present_time = time.perf_counter()
-                    # update speedmeter
-                    speedmeter.append((downloaded_size, present_time))
-                    # progress report
-                    if present_time - report_time > self._report_interval:
-                        # download speed
-                        download_speed = (
-                                (speedmeter[-1][0] - speedmeter[0][0])
-                                / (speedmeter[-1][1] - speedmeter[0][1])
-                                if speedmeter[-1][1] != speedmeter[0][1]
-                                else None)
-                        # progress report
-                        progress = DownloadProgress(
-                                    file_size=file_size,
-                                    downloaded_size=downloaded_size,
-                                    start_time=start_time,
-                                    present_time=present_time,
-                                    download_speed=download_speed)
-                        self._observer._receive_progress(progress)
-                        # update report time
-                        report_time = present_time
+                    # update reporter
+                    reporter.update_progress(len(data))
             except (DownloadException, requests.RequestException) as error:
-                self._observer._receive_error(error)
+                reporter.error(error=error)
                 temp_file_path.unlink()
                 return
         # move file
@@ -309,15 +356,7 @@ class DownloadThread(threading.Thread):
                     index += 1
             shutil.move(temp_file_path.as_posix(), save_path.as_posix())
         # chmod
-        if self._permission is not None:
-            save_path.chmod(self._permission)
+        if self._option.file_permission is not None:
+            save_path.chmod(self._option.file_permission)
         # finish report
-        progress = DownloadProgress(
-                    file_size=file_size,
-                    downloaded_size=downloaded_size,
-                    start_time=start_time,
-                    present_time=time.perf_counter(),
-                    download_speed=None)
-        self._observer._receive_finish(
-                    progress,
-                    save_path)
+        reporter.finish(saved_path=save_path)
