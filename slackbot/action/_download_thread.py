@@ -210,7 +210,7 @@ class Reporter(Generic[ReportInfo]):
     def __init__(
             self,
             info: ReportInfo,
-            report_queue: queue.Queue[DownloadReport[ReportInfo]],
+            report_queue: 'queue.Queue[DownloadReport[ReportInfo]]',
             url: str,
             path: pathlib.Path,
             speedmeter_size: int,
@@ -289,7 +289,7 @@ class DownloadThread(threading.Thread, Generic[ReportInfo]):
     def __init__(
                 self,
                 info: ReportInfo,
-                report_queue: queue.Queue[DownloadReport[ReportInfo]],
+                report_queue: 'queue.Queue[DownloadReport[ReportInfo]]',
                 path: pathlib.Path,
                 url: str,
                 option: DownloadThreadOption) -> None:
