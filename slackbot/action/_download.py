@@ -5,7 +5,7 @@ import logging
 import pathlib
 import queue
 import re
-from typing import Any, Dict, List, NamedTuple, Optional, Pattern, Tuple
+from typing import Any, Dict, List, NamedTuple, NewType, Optional, Pattern
 import requests
 from .. import Action, Option, OptionList
 from .._client import Client
@@ -27,6 +27,9 @@ class ReportInfo(NamedTuple):
     channel: Channel
 
 
+Report = DownloadReport[ReportInfo]
+
+
 class Download(Action[DownloadOption]):
     def __init__(
             self,
@@ -39,8 +42,7 @@ class Download(Action[DownloadOption]):
                 option,
                 key=key,
                 logger=logger or logging.getLogger(__name__))
-        self._report_queue: queue.Queue[DownloadReport[ReportInfo]] = (
-                queue.Queue())
+        self._report_queue: queue.Queue[Report] = queue.Queue()
 
     def run(self, api_list: List[Dict[str, Any]]) -> None:
         for api in api_list:
@@ -102,7 +104,7 @@ class Download(Action[DownloadOption]):
                     help='download thread')])
 
 
-def _post_report(self: Download, report: DownloadReport[ReportInfo]) -> None:
+def _post_report(self: Download, report: Report) -> None:
     format_bytes = DownloadReport.format_bytes
     message: List[str] = []
     # start
