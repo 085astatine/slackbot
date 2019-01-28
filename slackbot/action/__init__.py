@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
 from ._api_logger import APILogger
-from ._download import Download, DownloadReport
+from ._download import Download
 from ._download_thread import (
     DownloadException,
-    DownloadObserver,
+    DownloadReport,
+    DownloadReportType,
     DownloadThread,
-    DownloadThreadOption,
-    ProgressReport)
+    DownloadThreadOption)
 from ._response import Response
