@@ -392,20 +392,30 @@ class DownloadObserver:
 _move_file_lock = threading.Lock()
 
 
-class DownloadThread(threading.Thread):
+class DownloadThread(threading.Thread, Generic[ReportInfo]):
     def __init__(
                 self,
-                observer: DownloadObserver,
+                info: ReportInfo,
+                report_queue: queue.Queue[DownloadReport[ReportInfo]],
                 path: pathlib.Path,
                 url: str,
                 option: DownloadThreadOption) -> None:
         threading.Thread.__init__(self)
-        self._observer = observer
+        self._info = info
+        self._report_queue = report_queue
         self._path = path
         self._url = url
         self._option = option
 
     def run(self) -> None:
+        # reporter
+        reporter = Reporter(
+                info=self._info,
+                report_queue=self._report_queue,
+                url=self._url,
+                path=self._path,
+                speedmeter_size=self._option.speedmeter_size,
+                progress_report_interval=self._option.report_interval)
         # mkdir
         if not self._path.parent.exists():
             self._path.parent.mkdir(parents=True)
@@ -415,10 +425,6 @@ class DownloadThread(threading.Thread):
                         delete=False,
                         dir=self._path.parent.as_posix()) as temp_file:
             temp_file_path = pathlib.Path(temp_file.name)
-            # initialize time
-            start_time = time.perf_counter()
-            present_time = start_time
-            report_time = start_time
             try:
                 # streaming download
                 response = requests.get(self._url, stream=True)
@@ -427,35 +433,17 @@ class DownloadThread(threading.Thread):
                         or (response.status_code // 100 == 5)):
                     raise DownloadException(response)
                 # start report
-                self._observer._receive_start(
-                            temp_file_path,
-                            response)
-                # file size
-                content_length = response.headers.get('Content-Length', '')
-                file_size = (int(content_length)
-                             if content_length.isdigit()
-                             else None)
-                # initialize progress
-                progress = Progress(
-                        file_size,
-                        self._option.speedmeter_size)
+                reporter.start(
+                        temp_path=temp_file_path,
+                        response_header=response.headers)
                 # download
                 for data in response.iter_content(
                         chunk_size=self._option.chunk_size):
                     temp_file.write(data)
-                    # update progress
-                    progress.update(len(data))
-                    # update time
-                    present_time = time.perf_counter()
-                    # progress report
-                    if (present_time - report_time
-                            > self._option.report_interval):
-                        # progress report
-                        self._observer._receive_progress(progress.report())
-                        # update report time
-                        report_time = present_time
+                    # update reporter
+                    reporter.update_progress(len(data))
             except (DownloadException, requests.RequestException) as error:
-                self._observer._receive_error(error)
+                reporter.error(error=error)
                 temp_file_path.unlink()
                 return
         # move file
@@ -473,6 +461,4 @@ class DownloadThread(threading.Thread):
         if self._option.file_permission is not None:
             save_path.chmod(self._option.file_permission)
         # finish report
-        self._observer._receive_finish(
-                    progress.report(),
-                    save_path)
+        reporter.finish(saved_path=save_path)
