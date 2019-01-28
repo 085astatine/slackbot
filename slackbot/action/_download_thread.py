@@ -124,6 +124,7 @@ class Progress:
         self._file_size = file_size
         self._downloaded_size = 0
         self._speedmeter = SpeedMeter(speedmeter_size)
+        self._speedmeter.push(0)
 
     def update(self, received_size: int) -> None:
         self._downloaded_size += received_size
