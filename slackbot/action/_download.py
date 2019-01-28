@@ -111,7 +111,7 @@ def _post_report(self: Download, report: Report) -> None:
     if report.type is DownloadReportType.START:
         message.append('[{0}]:start <{1}> (size: {2})'.format(
                 report.path.name,
-                report.url,
+                report.final_url,
                 format_bytes(report.progress.file_size)))
     # progress
     elif report.type is DownloadReportType.PROGRESS:

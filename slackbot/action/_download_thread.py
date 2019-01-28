@@ -165,6 +165,7 @@ class DownloadReport(Generic[ReportInfo]):
             url: str,
             path: pathlib.Path,
             temp_path: Optional[pathlib.Path],
+            final_url: Optional[str],
             response_header: Optional[MutableMapping[str, str]],
             progress: ProgressReport,
             saved_path: Optional[pathlib.Path] = None,
@@ -174,14 +175,15 @@ class DownloadReport(Generic[ReportInfo]):
         self.url = url
         self.path = path
         self.temp_path = temp_path
+        self.final_url = final_url
         self.response_header = response_header
         self.progress = progress
         self.saved_path = saved_path
         self.error = error
 
     def __repr__(self) -> str:
-        keys = ['type', 'info', 'url', 'path', 'temp_path', 'response_header',
-                'progress', 'saved_path', 'error']
+        keys = ['type', 'info', 'url', 'path', 'temp_path', 'final_url',
+                'response_header', 'progress', 'saved_path', 'error']
         return '{0}.{1}({2})'.format(
                 self.__class__.__module__,
                 self.__class__.__name__,
@@ -235,11 +237,12 @@ class Reporter(Generic[ReportInfo]):
     def start(
             self,
             temp_path: pathlib.Path,
-            response_header: MutableMapping[str, str]) -> None:
+            response: requests.Response) -> None:
         self._temp_path = temp_path
-        self._response_header = response_header
+        self._final_url = response.url
+        self._response_header = response.headers
         # progress
-        content_length = response_header.get('Content-Length', '')
+        content_length = response.headers.get('Content-Length', '')
         file_size = int(content_length) if content_length.isdigit() else None
         self._progress = Progress(file_size, self._speedmeter_size)
         # start report
@@ -274,6 +277,7 @@ class Reporter(Generic[ReportInfo]):
                 url=self._url,
                 path=self._path,
                 temp_path=self._temp_path,
+                final_url=self._final_url,
                 response_header=self._response_header,
                 progress=self._progress.report(),
                 saved_path=self._saved_path,
@@ -329,7 +333,7 @@ class DownloadThread(threading.Thread, Generic[ReportInfo]):
                 # start report
                 reporter.start(
                         temp_path=temp_file_path,
-                        response_header=response.headers)
+                        response=response)
                 # download
                 for data in response.iter_content(
                         chunk_size=self._option.chunk_size):
