@@ -19,6 +19,23 @@ class CoreOption(NamedTuple):
     token_file: pathlib.Path
     interval: float
 
+    @staticmethod
+    def option_list(
+            name: str,
+            help: str = '') -> OptionList['CoreOption']:
+        return OptionList(
+            CoreOption,
+            name,
+            [Option('token_file',
+                    required=True,
+                    help='path to the file '
+                         'that Slack Authentification token is written'),
+             Option('interval',
+                    default=1.0,
+                    type=float,
+                    help='interval seconds to read real time messaging API')],
+            help=help)
+
 
 class Core(Action[CoreOption]):
     def __init__(self,
@@ -74,18 +91,8 @@ class Core(Action[CoreOption]):
         self._team.update(api_list)
 
     @staticmethod
-    def option_list(name: str) -> OptionList:
-        return OptionList(
-            CoreOption,
-            name,
-            [Option('token_file',
-                    required=True,
-                    help='path to the file '
-                         'that Slack Authentification token is written'),
-             Option('interval',
-                    default=1.0,
-                    type=float,
-                    help='interval(seconds) to read real time messaging API')])
+    def option_list(name: str) -> OptionList['CoreOption']:
+        return CoreOption.option_list(name)
 
 
 def create(

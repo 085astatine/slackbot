@@ -18,6 +18,32 @@ class APILoggerOption(NamedTuple):
     ignore_presence_change: bool
     ignore_user_typing: bool
 
+    @staticmethod
+    def option_list(
+            name: str,
+            help: str = '') -> OptionList['APILoggerOption']:
+        return OptionList(
+            APILoggerOption,
+            name,
+            [Option('mode',
+                    action=lambda mode: getattr(Mode, mode),
+                    default='raw',
+                    choices=[mode.name for mode in Mode],
+                    help='output format'),
+             Option('ignore_reconnect_url',
+                    type=bool,
+                    default=True,
+                    help='ignore "reconnect_url" api'),
+             Option('ignore_presence_change',
+                    type=bool,
+                    default=True,
+                    help='ignore "presence_change" api'),
+             Option('ignore_user_typing',
+                    type=bool,
+                    default=True,
+                    help='ignore "user_typing" api')],
+            help=help)
+
 
 class APILogger(Action[APILoggerOption]):
     def __init__(
@@ -53,24 +79,5 @@ class APILogger(Action[APILoggerOption]):
                         '\n{0}'.format(pprint.pformat(api, indent=2)))
 
     @staticmethod
-    def option_list(name: str) -> OptionList:
-        return OptionList(
-            APILoggerOption,
-            name,
-            [Option('mode',
-                    action=lambda mode: getattr(Mode, mode),
-                    default='raw',
-                    choices=[mode.name for mode in Mode],
-                    help='output format'),
-             Option('ignore_reconnect_url',
-                    type=bool,
-                    default=True,
-                    help='ignore "reconnect_url" api'),
-             Option('ignore_presence_change',
-                    type=bool,
-                    default=True,
-                    help='ignore "presence_change" api'),
-             Option('ignore_user_typing',
-                    type=bool,
-                    default=True,
-                    help='ignore "user_typing" api')])
+    def option_list(name: str) -> OptionList[APILoggerOption]:
+        return APILoggerOption.option_list(name)

@@ -24,7 +24,9 @@ class DownloadThreadOption(NamedTuple):
     file_permission: Optional[int]
 
     @staticmethod
-    def option_list(name: str, help: str = '') -> OptionList:
+    def option_list(
+            name: str,
+            help: str = '') -> OptionList['DownloadThreadOption']:
         # parse permission (format 0oXXX)
         def read_permission(value: str) -> Optional[int]:
             match = re.match('0o(?P<permission>[0-7]{3})', value)
