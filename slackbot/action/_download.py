@@ -22,6 +22,40 @@ class DownloadOption(NamedTuple):
     least_size: Optional[int]
     thread: DownloadThreadOption
 
+    @staticmethod
+    def option_list(
+            name: str,
+            help: str = '') -> OptionList['DownloadOption']:
+        return OptionList(
+            DownloadOption,
+            name,
+            [Option('channel',
+                    action=lambda x: (
+                            [] if x is None
+                            else [x] if isinstance(x, str)
+                            else x),
+                    default=None,
+                    help='target channel name (list or string)'),
+             Option('pattern',
+                    action=re.compile,
+                    default=r'download\s+"(?P<name>.+)"\s+'
+                            r'<(?P<url>https?://[\w/:%#\$&\?\(\)~\.=\+\-]+)'
+                            r'(|\|[^>]+)>',
+                    help=('regular expresion for working'
+                          ' which have simbolic groups named "name" & "url"')),
+             Option('destination_directory',
+                    action=lambda x: pathlib.Path().joinpath(x),
+                    default='./download',
+                    help='directory where files are saved'),
+             Option('least_size',
+                    action=lambda x: int(x) if x is not None else None,
+                    help='minimun file size'
+                         ' to be concidered successful download'),
+             DownloadThreadOption.option_list(
+                    name='thread',
+                    help='download thread')],
+            help=help)
+
 
 class ReportInfo(NamedTuple):
     channel: Channel
@@ -73,35 +107,8 @@ class Download(Action[DownloadOption]):
             _post_report(self, report)
 
     @staticmethod
-    def option_list(name: str) -> OptionList:
-        return OptionList(
-            DownloadOption,
-            name,
-            [Option('channel',
-                    action=lambda x: (
-                            [] if x is None
-                            else [x] if isinstance(x, str)
-                            else x),
-                    default=None,
-                    help='target channel name (list or string)'),
-             Option('pattern',
-                    action=re.compile,
-                    default=r'download\s+"(?P<name>.+)"\s+'
-                            r'<(?P<url>https?://[\w/:%#\$&\?\(\)~\.=\+\-]+)'
-                            r'(|\|[^>]+)>',
-                    help=('regular expresion for working'
-                          ' which have simbolic groups named "name" & "url"')),
-             Option('destination_directory',
-                    action=lambda x: pathlib.Path().joinpath(x),
-                    default='./download',
-                    help='directory where files are saved'),
-             Option('least_size',
-                    action=lambda x: int(x) if x is not None else None,
-                    help='minimun file size'
-                         ' to be concidered successful download'),
-             DownloadThreadOption.option_list(
-                    name='thread',
-                    help='download thread')])
+    def option_list(name: str) -> OptionList['DownloadOption']:
+        return DownloadOption.option_list(name)
 
 
 def _post_report(self: Download, report: Report) -> None:

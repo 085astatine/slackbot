@@ -52,37 +52,10 @@ class ResponseOption(NamedTuple):
     username: Optional[str]
     icon: Optional[str]
 
-
-class Response(Action[ResponseOption]):
-    def __init__(
-            self,
-            name: str,
-            option: ResponseOption,
-            key: Optional[str] = None,
-            logger: Optional[logging.Logger] = None) -> None:
-        super().__init__(
-                name,
-                option,
-                key=key,
-                logger=logger or logging.getLogger(__name__))
-
-    def run(self, api_list: List[Dict[str, Any]]) -> None:
-        for api in api_list:
-            if api['type'] == 'message' and 'subtype' not in api:
-                channel = self.team.channel_list.id_search(api['channel'])
-                if channel is None or channel.name not in self.option.channel:
-                    continue
-                user = self.team.user_list.id_search(api['user'])
-                if user is None:
-                    continue
-                _response(
-                        self,
-                        user,
-                        channel,
-                        api['text'])
-
     @staticmethod
-    def option_list(name: str) -> OptionList:
+    def option_list(
+            name: str,
+            help: str = '') -> OptionList['ResponseOption']:
         # translate to Trigger
         to_trigger: Dict[str, Trigger] = OrderedDict()
         to_trigger['non-reply'] = Trigger.NON_REPLY
@@ -151,7 +124,41 @@ class Response(Action[ResponseOption]):
                     help='username'),
              Option('icon',
                     action=_check_icon,
-                    help='user icon (:emoji: or http://url/to/icon)')])
+                    help='user icon (:emoji: or http://url/to/icon)')],
+            help=help)
+
+
+class Response(Action[ResponseOption]):
+    def __init__(
+            self,
+            name: str,
+            option: ResponseOption,
+            key: Optional[str] = None,
+            logger: Optional[logging.Logger] = None) -> None:
+        super().__init__(
+                name,
+                option,
+                key=key,
+                logger=logger or logging.getLogger(__name__))
+
+    def run(self, api_list: List[Dict[str, Any]]) -> None:
+        for api in api_list:
+            if api['type'] == 'message' and 'subtype' not in api:
+                channel = self.team.channel_list.id_search(api['channel'])
+                if channel is None or channel.name not in self.option.channel:
+                    continue
+                user = self.team.user_list.id_search(api['user'])
+                if user is None:
+                    continue
+                _response(
+                        self,
+                        user,
+                        channel,
+                        api['text'])
+
+    @staticmethod
+    def option_list(name: str) -> OptionList[ResponseOption]:
+        return ResponseOption.option_list(name)
 
 
 def _response(
