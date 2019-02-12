@@ -228,6 +228,7 @@ class Reporter(Generic[ReportInfo]):
         self._info = info
         self._url = url
         self._path = path
+        self._final_url: Optional[str] = None
         self._temp_path: Optional[pathlib.Path] = None
         self._response_header: Optional[MutableMapping[str, str]] = None
         self._saved_path: Optional[pathlib.Path] = None
@@ -300,7 +301,7 @@ class DownloadThread(threading.Thread, Generic[ReportInfo]):
                 path: pathlib.Path,
                 url: str,
                 option: DownloadThreadOption) -> None:
-        threading.Thread.__init__(self)
+        super().__init__()
         self._info = info
         self._report_queue = report_queue
         self._path = path
