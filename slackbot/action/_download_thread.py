@@ -301,7 +301,7 @@ class DownloadThread(threading.Thread, Generic[ReportInfo]):
                 path: pathlib.Path,
                 url: str,
                 option: DownloadThreadOption) -> None:
-        threading.Thread.__init__(self)
+        super().__init__()
         self._info = info
         self._report_queue = report_queue
         self._path = path
