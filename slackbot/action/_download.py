@@ -50,7 +50,7 @@ class DownloadOption(NamedTuple):
              Option('least_size',
                     action=lambda x: int(x) if x is not None else None,
                     help='minimun file size'
-                         ' to be concidered successful download'),
+                         ' regarded as a successful download'),
              DownloadThreadOption.option_list(
                     name='thread',
                     help='download thread')],
