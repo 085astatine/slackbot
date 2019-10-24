@@ -335,9 +335,7 @@ class DownloadThread(threading.Thread, Generic[ReportInfo]):
                 # streaming download
                 response = requests.get(self._url, stream=True)
                 # status code check
-                if ((response.status_code // 100 == 4)
-                        or (response.status_code // 100 == 5)):
-                    raise DownloadException(response)
+                response.raise_for_status()
                 # start report
                 reporter.start(
                         temp_path=temp_file_path,
