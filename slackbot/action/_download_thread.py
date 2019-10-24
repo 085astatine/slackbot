@@ -351,13 +351,11 @@ class DownloadThread(threading.Thread, Generic[ReportInfo]):
             # move file
             with _move_file_lock:
                 save_path = self._path
-                if save_path.exists():
-                    index = 0
-                    while save_path.exists():
-                        save_path = self._path.parent.joinpath(
-                                        '{0.stem}_{1}{0.suffix}'
-                                        .format(self._path, index))
-                        index += 1
+                i = 0
+                while save_path.exists():
+                    save_path = self._path.with_name(
+                            '{0.stem}_{1}{0.suffix}'.format(self._path, i))
+                    i += 1
                 shutil.move(temp_file_path.as_posix(), save_path.as_posix())
             # chmod
             if self._option.file_permission is not None:
