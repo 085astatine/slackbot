@@ -325,12 +325,13 @@ class DownloadThread(threading.Thread, Generic[ReportInfo]):
         if not self._path.parent.exists():
             self._path.parent.mkdir(parents=True)
         # download
-        with tempfile.NamedTemporaryFile(
-                        mode='wb',
-                        delete=False,
-                        dir=self._path.parent.as_posix()) as temp_file:
-            temp_file_path = pathlib.Path(temp_file.name)
-            try:
+        temp_file_path: Optional[pathlib.Path] = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                    mode='wb',
+                    delete=False,
+                    dir=self._path.parent.as_posix()) as temp_file:
+                temp_file_path = pathlib.Path(temp_file.name)
                 # streaming download
                 response = requests.get(self._url, stream=True)
                 # status code check
@@ -347,23 +348,25 @@ class DownloadThread(threading.Thread, Generic[ReportInfo]):
                     temp_file.write(data)
                     # update reporter
                     reporter.update_progress(len(data))
-            except (DownloadException, requests.RequestException) as error:
-                reporter.error(error=error)
-                temp_file_path.unlink()
-                return
-        # move file
-        with _move_file_lock:
-            save_path = self._path
-            if save_path.exists():
-                index = 0
-                while save_path.exists():
-                    save_path = self._path.parent.joinpath(
-                                    '{0.stem}_{1}{0.suffix}'
-                                    .format(self._path, index))
-                    index += 1
-            shutil.move(temp_file_path.as_posix(), save_path.as_posix())
-        # chmod
-        if self._option.file_permission is not None:
-            save_path.chmod(self._option.file_permission)
-        # finish report
-        reporter.finish(saved_path=save_path)
+            # move file
+            with _move_file_lock:
+                save_path = self._path
+                if save_path.exists():
+                    index = 0
+                    while save_path.exists():
+                        save_path = self._path.parent.joinpath(
+                                        '{0.stem}_{1}{0.suffix}'
+                                        .format(self._path, index))
+                        index += 1
+                shutil.move(temp_file_path.as_posix(), save_path.as_posix())
+            # chmod
+            if self._option.file_permission is not None:
+                save_path.chmod(self._option.file_permission)
+            # finish report
+            reporter.finish(saved_path=save_path)
+        except (DownloadException, requests.RequestException) as error:
+            reporter.error(error=error)
+            # remove temp file
+            if temp_file_path is not None:
+                if temp_file_path.exists():
+                    temp_file_path.unlink()
