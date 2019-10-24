@@ -145,6 +145,19 @@ class Progress:
                 speed=self._speedmeter.speed())
 
 
+class ProgressReportTimer:
+    def __init__(self, interval: float) -> None:
+        self._last = time.perf_counter()
+        self._interval = interval
+
+    def check(self) -> bool:
+        current = time.perf_counter()
+        if current - self._last >= self._interval:
+            self._last = current
+            return True
+        return False
+
+
 class DownloadException(Exception):
     def __init__(self, response: requests.models.Response) -> None:
         self._response = response
@@ -240,11 +253,13 @@ class Reporter(Generic[ReportInfo]):
         # progress
         self._speedmeter_size = speedmeter_size
         self._progress = Progress(None, self._speedmeter_size)
+        self._progress_timer = ProgressReportTimer(progress_report_interval)
 
     def start(
             self,
             temp_path: pathlib.Path,
-            response: requests.Response) -> None:
+            response: requests.Response,
+            progress_report_interval: float) -> None:
         self._temp_path = temp_path
         self._final_url = response.url
         self._response_header = response.headers
@@ -252,17 +267,15 @@ class Reporter(Generic[ReportInfo]):
         content_length = response.headers.get('Content-Length', '')
         file_size = int(content_length) if content_length.isdigit() else None
         self._progress = Progress(file_size, self._speedmeter_size)
-        # start report
-        self._report_time = time.perf_counter()
+        self._progress_timer = ProgressReportTimer(progress_report_interval)
+        # report
         self.report(DownloadReportType.START)
 
     def update_progress(self, received_size: int) -> None:
         # update progress
         self._progress.update(received_size)
         # report
-        current_time = time.perf_counter()
-        if current_time - self._report_time > self._report_interval:
-            self._report_time = current_time
+        if self._progress_timer.check():
             self.report(DownloadReportType.PROGRESS)
 
     def finish(self, saved_path: pathlib.Path) -> None:
@@ -339,7 +352,8 @@ class DownloadThread(threading.Thread, Generic[ReportInfo]):
                 # start report
                 reporter.start(
                         temp_path=temp_file_path,
-                        response=response)
+                        response=response,
+                        progress_report_interval=self._option.report_interval)
                 # download
                 for data in response.iter_content(
                         chunk_size=self._option.chunk_size):
