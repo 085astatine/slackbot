@@ -159,11 +159,24 @@ class ProgressReportTimer:
 
 
 class DownloadException(Exception):
-    def __init__(self, response: requests.models.Response) -> None:
-        self._response = response
+    def __init__(self, message: str) -> None:
+        self._message = message
 
     def __str__(self) -> str:
-        return 'status code [{0}]'.format(self._response.status_code)
+        return self._message
+
+
+class IncompleteDownloadError(DownloadException):
+    def __init__(self, progress: ProgressReport) -> None:
+        super().__init__(
+            message='incomplete download {0}B/{1}B'.format(
+                    progress.downloaded_size,
+                    progress.file_size))
+        self._progress = progress
+
+    @property
+    def progress(self) -> ProgressReport:
+        return self._progress
 
 
 class DownloadReportType(enum.Enum):
@@ -361,6 +374,9 @@ class DownloadThread(threading.Thread, Generic[ReportInfo]):
                     progress.update(len(data))
                     if progress_timer.check():
                         reporter.progress(progress=progress.report())
+            # complete check
+            if not progress.is_completed():
+                raise IncompleteDownloadError(progress.report())
             # move file
             with _move_file_lock:
                 save_path = self._path
