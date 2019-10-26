@@ -6,7 +6,7 @@ name = "pypi"
 [packages]
 pyyaml = ">=4.2b1"
 requests = ">=2.20"
-slackclient = "*"
+slackclient = "==2.2.1"
 
 [dev-packages]
 
