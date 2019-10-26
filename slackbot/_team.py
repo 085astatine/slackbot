@@ -2,7 +2,6 @@
 
 import logging
 from typing import Any, Dict, Iterable, Iterator, List, Optional
-from ._client import Client
 
 
 _team: Dict[Optional[str], '_Team'] = {}
@@ -217,6 +216,10 @@ class GroupList:
                 self.add(Group(data, key=self._key))
 
 
+class Team:
+    pass
+
+'''
 class _Team:
     def __init__(self, key: Optional[str] = None) -> None:
         self._key = key
@@ -399,3 +402,4 @@ class Team:
             return self.user_list.id_search(bot_id)
         else:
             return None
+'''

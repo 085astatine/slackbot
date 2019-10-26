@@ -3,7 +3,6 @@
 import logging
 from typing import (
         Any, Dict, Generic, List, NamedTuple, Optional, Tuple, TypeVar)
-from ._client import Client
 from ._option import OptionList
 from ._team import Team
 
@@ -29,8 +28,6 @@ class Action(Generic[OptionType]):
         # parameter
         self._name = name
         self._option = option
-        self._key = key
-        self._client = Client(key=self._key, logger=self._logger)
 
     def run(self, api_list: List[Dict[str, Any]]) -> None:
         pass

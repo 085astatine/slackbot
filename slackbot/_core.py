@@ -8,9 +8,9 @@ import sys
 import threading
 import time
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type
+import slack
 import yaml
 from ._action import Action
-from ._client import Client
 from ._option import Option, OptionList, OptionParser
 from ._team import Team
 
@@ -50,11 +50,8 @@ class Core(Action[CoreOption]):
                     logger=logger or logging.getLogger(__name__))
         self._args = args
         self._action_dict = action_dict or {}
-        self._team = Team(
-                client=Client(
-                    logger=self._logger.getChild('Team')))
 
-    def initialize(self) -> None:
+    def start(self) -> None:
         # load token
         token_file = pathlib.Path(self.option.token_file)
         if not token_file.exists():
@@ -64,31 +61,13 @@ class Core(Action[CoreOption]):
             token = fin.read().strip()
         self._logger.info("token file '{0}' has been loaded"
                           .format(token_file.resolve().as_posix()))
-        # client, team
-        self._client.setup(token)
-        self._team.initialize(token)
-
-    def start(self) -> None:
         self._logger.info('connecting to the Real Time Messaging API')
-        if self._client.rtm_connect():
-            self._logger.info(
-                        'connecting to the Real Time Messaging API: success')
-            while True:
-                timer = threading.Thread(
-                            name='CoreTimer',
-                            target=lambda: time.sleep(self.option.interval))
-                timer.start()
-                api_list = self._client.rtm_read()
-                for action in self._action_dict.values():
-                    action.run(api_list)
-                self.run(api_list)
-                timer.join()
-        else:
-            self._logger.error(
-                        'connecting to the Real Time Messaging API: failed')
-
-    def run(self, api_list: List[Dict[str, Any]]) -> None:
-        self._team.update(api_list)
+        # client
+        client = slack.RTMClient(
+                token=token)
+        # register callback
+        # start
+        client.start()
 
     @staticmethod
     def option_list(name: str) -> OptionList['CoreOption']:
@@ -158,7 +137,9 @@ def create(
         logger.error(message)
         sys.stderr.write('{0}\n'.format(message))
         sys.exit(1)
-    config_yaml = yaml.load(option.config.open())
+    config_yaml = yaml.load(
+            option.config.open(),
+            Loader=yaml.SafeLoader)
     option_dict = {key: parser.parse(config_yaml.get(key, None))
                    for key, parser in option_parser_list.items()}
     logger.debug('config: {0}'.format(option_dict))

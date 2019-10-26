@@ -8,7 +8,6 @@ import re
 from typing import Any, Dict, List, NamedTuple, NewType, Optional, Pattern
 import requests
 from .. import Action, Option, OptionList
-from .._client import Client
 from .._team import Channel
 from ._download_thread import (
         DownloadReport, DownloadReportType,
