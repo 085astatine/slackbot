@@ -18,7 +18,6 @@ class Action(Generic[OptionType]):
     def __init__(self,
                  name: str,
                  option: OptionType,
-                 key: Optional[str] = None,
                  logger: Optional[logging.Logger] = None) -> None:
         # logger
         if not hasattr(self, '_logger'):

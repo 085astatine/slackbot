@@ -68,12 +68,10 @@ class Download(Action[DownloadOption]):
             self,
             name: str,
             option: DownloadOption,
-            key: Optional[str] = None,
             logger: Optional[logging.Logger] = None) -> None:
         super().__init__(
                 name,
                 option,
-                key=key,
                 logger=logger or logging.getLogger(__name__))
         self._report_queue: queue.Queue[Report] = queue.Queue()
 

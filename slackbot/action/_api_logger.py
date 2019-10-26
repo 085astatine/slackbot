@@ -50,12 +50,10 @@ class APILogger(Action[APILoggerOption]):
             self,
             name: str,
             option: APILoggerOption,
-            key: Optional[str] = None,
             logger: Optional[logging.Logger] = None) -> None:
         super().__init__(
                 name,
                 option,
-                key=key,
                 logger=logger or logging.getLogger(__name__))
 
     def run(self, api_list: List[Dict[str, Any]]) -> None:
