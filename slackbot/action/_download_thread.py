@@ -133,6 +133,10 @@ class Progress:
         self._latest_time = time.perf_counter()
         self._speedmeter.push(self._downloaded_size)
 
+    def is_completed(self) -> bool:
+        return (self._file_size is None
+                or self._file_size == self._downloaded_size)
+
     def report(self) -> ProgressReport:
         return ProgressReport(
                 file_size=self._file_size,
@@ -141,12 +145,38 @@ class Progress:
                 speed=self._speedmeter.speed())
 
 
+class ProgressReportTimer:
+    def __init__(self, interval: float) -> None:
+        self._last = time.perf_counter()
+        self._interval = interval
+
+    def check(self) -> bool:
+        current = time.perf_counter()
+        if current - self._last >= self._interval:
+            self._last = current
+            return True
+        return False
+
+
 class DownloadException(Exception):
-    def __init__(self, response: requests.models.Response) -> None:
-        self._response = response
+    def __init__(self, message: str) -> None:
+        self._message = message
 
     def __str__(self) -> str:
-        return 'status code [{0}]'.format(self._response.status_code)
+        return self._message
+
+
+class IncompleteDownloadError(DownloadException):
+    def __init__(self, progress: ProgressReport) -> None:
+        super().__init__(
+            message='incomplete download {0}B/{1}B'.format(
+                    progress.downloaded_size,
+                    progress.file_size))
+        self._progress = progress
+
+    @property
+    def progress(self) -> ProgressReport:
+        return self._progress
 
 
 class DownloadReportType(enum.Enum):
@@ -217,13 +247,8 @@ class Reporter(Generic[ReportInfo]):
             info: ReportInfo,
             report_queue: 'queue.Queue[DownloadReport[ReportInfo]]',
             url: str,
-            path: pathlib.Path,
-            speedmeter_size: int,
-            progress_report_interval: float) -> None:
+            path: pathlib.Path) -> None:
         self._report_queue = report_queue
-        # timer
-        self._report_time = time.perf_counter()
-        self._report_interval = progress_report_interval
         # report parameter
         self._info = info
         self._url = url
@@ -231,11 +256,13 @@ class Reporter(Generic[ReportInfo]):
         self._final_url: Optional[str] = None
         self._temp_path: Optional[pathlib.Path] = None
         self._response_header: Optional[MutableMapping[str, str]] = None
+        self._progress = ProgressReport(
+                file_size=None,
+                downloaded_size=0,
+                elapsed_time=0.,
+                speed=None)
         self._saved_path: Optional[pathlib.Path] = None
         self._error: Optional[Exception] = None
-        # progress
-        self._speedmeter_size = speedmeter_size
-        self._progress = Progress(None, self._speedmeter_size)
 
     def start(
             self,
@@ -244,25 +271,22 @@ class Reporter(Generic[ReportInfo]):
         self._temp_path = temp_path
         self._final_url = response.url
         self._response_header = response.headers
-        # progress
-        content_length = response.headers.get('Content-Length', '')
-        file_size = int(content_length) if content_length.isdigit() else None
-        self._progress = Progress(file_size, self._speedmeter_size)
-        # start report
-        self._report_time = time.perf_counter()
+        # report
         self.report(DownloadReportType.START)
 
-    def update_progress(self, received_size: int) -> None:
-        # update progress
-        self._progress.update(received_size)
+    def progress(
+            self,
+            progress: ProgressReport) -> None:
+        self._progress = progress
         # report
-        current_time = time.perf_counter()
-        if current_time - self._report_time > self._report_interval:
-            self._report_time = current_time
-            self.report(DownloadReportType.PROGRESS)
+        self.report(DownloadReportType.PROGRESS)
 
-    def finish(self, saved_path: pathlib.Path) -> None:
+    def finish(
+            self,
+            saved_path: pathlib.Path,
+            progress: ProgressReport) -> None:
         self._saved_path = saved_path
+        self._progress = progress
         # report
         self.report(DownloadReportType.FINISH)
 
@@ -282,7 +306,7 @@ class Reporter(Generic[ReportInfo]):
                 temp_path=self._temp_path,
                 final_url=self._final_url,
                 response_header=self._response_header,
-                progress=self._progress.report(),
+                progress=self._progress,
                 saved_path=self._saved_path,
                 error=self._error)
 
@@ -314,52 +338,64 @@ class DownloadThread(threading.Thread, Generic[ReportInfo]):
                 info=self._info,
                 report_queue=self._report_queue,
                 url=self._url,
-                path=self._path,
-                speedmeter_size=self._option.speedmeter_size,
-                progress_report_interval=self._option.report_interval)
+                path=self._path)
         # mkdir
         if not self._path.parent.exists():
             self._path.parent.mkdir(parents=True)
         # download
-        with tempfile.NamedTemporaryFile(
-                        mode='wb',
-                        delete=False,
-                        dir=self._path.parent.as_posix()) as temp_file:
-            temp_file_path = pathlib.Path(temp_file.name)
-            try:
+        temp_file_path: Optional[pathlib.Path] = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                    mode='wb',
+                    delete=False,
+                    dir=self._path.parent.as_posix()) as temp_file:
+                temp_file_path = pathlib.Path(temp_file.name)
                 # streaming download
                 response = requests.get(self._url, stream=True)
                 # status code check
-                if ((response.status_code // 100 == 4)
-                        or (response.status_code // 100 == 5)):
-                    raise DownloadException(response)
+                response.raise_for_status()
                 # start report
                 reporter.start(
                         temp_path=temp_file_path,
                         response=response)
+                # progress
+                content_length = response.headers.get('Content-Length', '')
+                progress = Progress(
+                        file_size=(int(content_length)
+                                   if content_length.isdigit() else None),
+                        speedmeter_size=self._option.speedmeter_size)
+                progress_timer = ProgressReportTimer(
+                        interval=self._option.report_interval)
                 # download
                 for data in response.iter_content(
                         chunk_size=self._option.chunk_size):
                     temp_file.write(data)
-                    # update reporter
-                    reporter.update_progress(len(data))
-            except (DownloadException, requests.RequestException) as error:
-                reporter.error(error=error)
-                temp_file_path.unlink()
-                return
-        # move file
-        with _move_file_lock:
-            save_path = self._path
-            if save_path.exists():
-                index = 0
+                    # update progress
+                    progress.update(len(data))
+                    if progress_timer.check():
+                        reporter.progress(progress=progress.report())
+            # complete check
+            if not progress.is_completed():
+                raise IncompleteDownloadError(progress.report())
+            # move file
+            with _move_file_lock:
+                save_path = self._path
+                i = 0
                 while save_path.exists():
-                    save_path = self._path.parent.joinpath(
-                                    '{0.stem}_{1}{0.suffix}'
-                                    .format(self._path, index))
-                    index += 1
-            shutil.move(temp_file_path.as_posix(), save_path.as_posix())
-        # chmod
-        if self._option.file_permission is not None:
-            save_path.chmod(self._option.file_permission)
-        # finish report
-        reporter.finish(saved_path=save_path)
+                    save_path = self._path.with_name(
+                            '{0.stem}_{1}{0.suffix}'.format(self._path, i))
+                    i += 1
+                shutil.move(temp_file_path.as_posix(), save_path.as_posix())
+            # chmod
+            if self._option.file_permission is not None:
+                save_path.chmod(self._option.file_permission)
+            # finish report
+            reporter.finish(
+                    saved_path=save_path,
+                    progress=progress.report())
+        except Exception as error:
+            reporter.error(error=error)
+            # remove temp file
+            if temp_file_path is not None:
+                if temp_file_path.exists():
+                    temp_file_path.unlink()
