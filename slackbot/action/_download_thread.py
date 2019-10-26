@@ -393,7 +393,7 @@ class DownloadThread(threading.Thread, Generic[ReportInfo]):
             reporter.finish(
                     saved_path=save_path,
                     progress=progress.report())
-        except (DownloadException, requests.RequestException) as error:
+        except Exception as error:
             reporter.error(error=error)
             # remove temp file
             if temp_file_path is not None:
