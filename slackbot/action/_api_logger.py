@@ -3,7 +3,7 @@
 import enum
 import logging
 import pprint
-from typing import Any, Dict, List, NamedTuple, Optional, Tuple
+from typing import Callable, NamedTuple, Optional, Tuple
 from .. import Action, Option, OptionList
 
 
@@ -14,9 +14,7 @@ class Mode(enum.Enum):
 
 class APILoggerOption(NamedTuple):
     mode: Mode
-    ignore_reconnect_url: bool
-    ignore_presence_change: bool
-    ignore_user_typing: bool
+    event_list: Tuple[str, ...]
 
     @staticmethod
     def option_list(
@@ -30,18 +28,10 @@ class APILoggerOption(NamedTuple):
                     default='raw',
                     choices=[mode.name for mode in Mode],
                     help='output format'),
-             Option('ignore_reconnect_url',
-                    type=bool,
-                    default=True,
-                    help='ignore "reconnect_url" api'),
-             Option('ignore_presence_change',
-                    type=bool,
-                    default=True,
-                    help='ignore "presence_change" api'),
-             Option('ignore_user_typing',
-                    type=bool,
-                    default=True,
-                    help='ignore "user_typing" api')],
+             Option('event_list',
+                    action=lambda x: x if x is not None else [],
+                    default=None,
+                    help='event list for log output')],
             help=help)
 
 
@@ -56,26 +46,26 @@ class APILogger(Action[APILoggerOption]):
                 option,
                 logger=logger or logging.getLogger(__name__))
 
-    def run(self, api_list: List[Dict[str, Any]]) -> None:
-        for api in api_list:
-            # ignore check
-            if (self.option.ignore_reconnect_url
-                    and api['type'] == 'reconnect_url'):
-                continue
-            if (self.option.ignore_presence_change
-                    and api['type'] == 'presence_change'):
-                continue
-            if (self.option.ignore_user_typing
-                    and api['type'] == 'user_typing'):
-                continue
-            # raw
-            if self.option.mode is Mode.raw:
-                self._logger.info(repr(api))
-            # pprint
-            elif self.option.mode is Mode.pprint:
-                self._logger.info(
-                        '\n{0}'.format(pprint.pformat(api, indent=2)))
+    def register(self) -> None:
+        for event in self._option.event_list:
+            self.register_callback(
+                    event=event,
+                    callback=self._logging_callback(event=event))
 
     @staticmethod
     def option_list(name: str) -> OptionList[APILoggerOption]:
         return APILoggerOption.option_list(name)
+
+    def _logging_callback(self, event: str) -> Callable:
+        def callback(**payload) -> None:
+            data = payload['data']
+            # raw
+            if self.option.mode is Mode.raw:
+                self._logger.info('event \'%s\': %r', event, data)
+            # pprint
+            elif self.option.mode is Mode.pprint:
+                self._logger.info(
+                        'event \'%s\': %s',
+                        event,
+                        '\n{0}'.format(pprint.pformat(data, indent=2)))
+        return callback
