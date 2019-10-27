@@ -66,6 +66,8 @@ class Core(Action[CoreOption]):
         client = slack.RTMClient(
                 token=token)
         # register callback
+        for action in self._action_dict.values():
+            action.register()
         # start
         client.start()
 

@@ -2,7 +2,8 @@
 
 import logging
 from typing import (
-        Any, Dict, Generic, List, NamedTuple, Optional, Tuple, TypeVar)
+        Any, Callable, Dict, Generic, List, NamedTuple, Optional, TypeVar)
+import slack
 from ._option import OptionList
 from ._team import Team
 
@@ -31,6 +32,9 @@ class Action(Generic[OptionType]):
     def run(self, api_list: List[Dict[str, Any]]) -> None:
         pass
 
+    def register(self) -> None:
+        pass
+
     def api_call(self, method: str, **kwargs):
         return self._client.api_call(method, **kwargs)
 
@@ -49,6 +53,16 @@ class Action(Generic[OptionType]):
     @staticmethod
     def option_list(name: str) -> OptionList:
         return OptionList(NoneOption, name, [])
+
+    @classmethod
+    def register_callback(
+            cls,
+            *,
+            event: str,
+            callback: Callable) -> None:
+        slack.RTMClient.on(
+                event=event,
+                callback=callback)
 
 
 def escape_text(string: str) -> str:
