@@ -35,6 +35,9 @@ class Action(Generic[OptionType]):
     def register(self) -> None:
         pass
 
+    def update(self, client: slack.WebClient) -> None:
+        pass
+
     def api_call(self, method: str, **kwargs):
         return self._client.api_call(method, **kwargs)
 

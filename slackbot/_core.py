@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import asyncio
 import collections
 import logging
 import pathlib
+import signal
 import sys
-import threading
-import time
-from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type
+from typing import Dict, List, NamedTuple, Optional, Type
 import slack
 import yaml
 from ._action import Action
@@ -49,31 +49,78 @@ class Core(Action[CoreOption]):
                     option,
                     logger=logger or logging.getLogger(__name__))
         self._args = args
+        self._rtm_client: Optional[slack.RTMClient] = None
+        self._web_client: Optional[slack.WebClient] = None
+        self._is_running = False
         self._action_dict = action_dict or {}
 
-    def start(self) -> None:
-        # load token
-        token_file = pathlib.Path(self.option.token_file)
-        if not token_file.exists():
-            self._logger.error("token file '{0}' does not exist"
-                               .format(token_file.resolve().as_posix()))
-        with token_file.open() as fin:
-            token = fin.read().strip()
-        self._logger.info("token file '{0}' has been loaded"
-                          .format(token_file.resolve().as_posix()))
-        self._logger.info('connecting to the Real Time Messaging API')
-        # client
-        client = slack.RTMClient(
-                token=token)
-        # register callback
-        for action in self._action_dict.values():
-            action.register()
-        # start
-        client.start()
+    def start(
+            self,
+            loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
+        loop = loop or asyncio.get_event_loop()
+        task = self._main_task(loop=loop)
+        loop.run_until_complete(task)
+
+    def stop(self) -> None:
+        self._logger.info('slackbot is shutting down')
+        self._is_running = False
+        if self._rtm_client is not None:
+            self._rtm_client.stop()
 
     @staticmethod
     def option_list(name: str) -> OptionList['CoreOption']:
         return CoreOption.option_list(name)
+
+    def _main_task(self, loop) -> asyncio.Future:
+        self._is_running = True
+        # load token
+        token = self._load_token()
+        # client
+        self._rtm_client = slack.RTMClient(
+                token=token,
+                run_async=True,
+                loop=loop)
+        self._web_client = slack.WebClient(
+                token=token,
+                run_async=True,
+                loop=loop)
+        # register callback
+        for action in self._action_dict.values():
+            action.register()
+        # task
+        rtm_task = self._rtm_client.start()
+        update_task = asyncio.ensure_future(
+                self._update(),
+                loop=loop)
+        # signal handler
+        signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
+        for sig in signals:
+            loop.add_signal_handler(sig, self.stop)
+        return asyncio.gather(
+                rtm_task,
+                update_task)
+
+    def _load_token(self) -> str:
+        token_file = pathlib.Path(self.option.token_file)
+        if not token_file.exists():
+            self._logger.error(
+                    'token file \'%s\' does not exist',
+                    token_file.resolve().as_posix())
+        with token_file.open() as fin:
+            token = fin.read().strip()
+        self._logger.info(
+                'token file \'%s\' has been loaded',
+                token_file.resolve().as_posix())
+        self._logger.info('connecting to the Real Time Messaging API')
+        return token
+
+    async def _update(self) -> None:
+        while self._is_running:
+            if self._web_client is not None:
+                self.update(self._web_client)
+                for action in self._action_dict.values():
+                    action.update(self._web_client)
+            await asyncio.sleep(self.option.interval)
 
 
 def create(
