@@ -2,7 +2,7 @@
 
 import logging
 from typing import (
-        Any, Callable, Dict, Generic, List, NamedTuple, Optional, TypeVar)
+        Callable, Generic, NamedTuple, Optional, TypeVar)
 import slack
 from ._option import OptionList
 from ._team import Team
@@ -30,17 +30,11 @@ class Action(Generic[OptionType]):
         self._option = option
         self._team = Team()
 
-    def run(self, api_list: List[Dict[str, Any]]) -> None:
-        pass
-
     def register(self) -> None:
         pass
 
     def update(self, client: slack.WebClient) -> None:
         pass
-
-    def api_call(self, method: str, **kwargs):
-        return self._client.api_call(method, **kwargs)
 
     @property
     def name(self) -> str:
