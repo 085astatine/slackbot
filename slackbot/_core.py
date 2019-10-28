@@ -12,12 +12,13 @@ import slack
 import yaml
 from ._action import Action
 from ._option import Option, OptionList, OptionParser
-from ._team import Team
+from ._update_team import UpdateTeam, UpdateTeamOption
 
 
 class CoreOption(NamedTuple):
     token_file: pathlib.Path
     interval: float
+    team: UpdateTeamOption
 
     @staticmethod
     def option_list(
@@ -33,7 +34,10 @@ class CoreOption(NamedTuple):
              Option('interval',
                     default=1.0,
                     type=float,
-                    help='interval seconds to read real time messaging API')],
+                    help='interval seconds to read real time messaging API'),
+             UpdateTeamOption.option_list(
+                    name='team',
+                    help='update team info')],
             help=help)
 
 
@@ -52,6 +56,10 @@ class Core(Action[CoreOption]):
         self._rtm_client: Optional[slack.RTMClient] = None
         self._web_client: Optional[slack.WebClient] = None
         self._is_running = False
+        self._update_team = UpdateTeam(
+                name='UpdateTeam',
+                option=self.option.team,
+                logger=self._logger.getChild('UpdateTeam'))
         self._action_dict = action_dict or {}
 
     def start(
@@ -66,6 +74,9 @@ class Core(Action[CoreOption]):
         self._is_running = False
         if self._rtm_client is not None:
             self._rtm_client.stop()
+
+    def register(self) -> None:
+        self._update_team.register()
 
     @staticmethod
     def option_list(name: str) -> OptionList['CoreOption']:
@@ -85,6 +96,7 @@ class Core(Action[CoreOption]):
                 run_async=True,
                 loop=loop)
         # register callback
+        self.register()
         for action in self._action_dict.values():
             action.register()
         # task

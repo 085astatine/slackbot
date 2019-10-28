@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import logging
 from typing import Any, Dict, Iterable, Iterator, List, Optional
 import slack
 
@@ -252,9 +251,7 @@ class Team:
         if auth_test.get('ok', False):
             self._auth_test = auth_test
         # team.info
-        team_info = client.team_info()
-        if team_info.get('ok', False):
-            self._team_info = team_info['team']
+        self.request_team_info(client)
         # users.list
         users_list = client.users_list()
         if users_list.get('ok', False):
@@ -270,6 +267,34 @@ class Team:
         if groups_list.get('ok', False):
             self._group_list = GroupList(
                     Group(data) for data in groups_list['groups'])
+
+    def request_team_info(
+            self,
+            client: slack.WebClient) -> None:
+        # team.info
+        team_info = client.team_info()
+        if team_info.get('ok', False):
+            self._team_info = team_info['team']
+
+    def request_channels_info(
+            self,
+            client: slack.WebClient,
+            channel_id: str) -> None:
+        # channels.info
+        response = client.channels_info(channel=channel_id)
+        if response.get('ok', False):
+            self._channel_list.update(response['channel'])
+
+    def request_groups_info(
+            self,
+            client: slack.WebClient,
+            group_id: str) -> None:
+        # groups.info
+        response = client.groups_info(channel=group_id)
+        if response.get('ok', False):
+            self._group_list.update(response['group'])
+
+
 '''
 class _Team:
     def __init__(self, key: Optional[str] = None) -> None:
