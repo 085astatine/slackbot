@@ -2,18 +2,14 @@
 
 import logging
 from typing import Any, Dict, Iterable, Iterator, List, Optional
-
-
-_team: Dict[Optional[str], '_Team'] = {}
+import slack
 
 
 class User:
     def __init__(
             self,
-            data: Dict[str, Any],
-            key: Optional[str] = None) -> None:
+            data: Dict[str, Any]) -> None:
         self._data = data
-        self._key = key
 
     def get(self, key: str) -> Any:
         return self._data[key]
@@ -34,10 +30,8 @@ class User:
 class Channel:
     def __init__(
             self,
-            data: Dict[str, Any],
-            key: Optional[str] = None) -> None:
+            data: Dict[str, Any]) -> None:
         self._data = data
-        self._key = key
 
     def get(self, key: str) -> Any:
         return self._data[key]
@@ -58,7 +52,7 @@ class Channel:
     def members(self) -> List[User]:
         return list(filter(
                 None,
-                map(_team[self._key].user_list.id_search,
+                map(Team().user_list.id_search,
                     self._data['members'])))
 
     @property
@@ -69,10 +63,8 @@ class Channel:
 class Group:
     def __init__(
             self,
-            data: Dict[str, Any],
-            key: Optional[str] = None) -> None:
+            data: Dict[str, Any]) -> None:
         self._data = data
-        self._key = key
 
     def get(self, key: str) -> Any:
         return self._data[key]
@@ -93,7 +85,7 @@ class Group:
     def members(self) -> List[User]:
         return list(filter(
                 None,
-                map(_team[self._key].user_list.id_search,
+                map(Team().user_list.id_search,
                     self._data['members'])))
 
     @property
@@ -104,10 +96,8 @@ class Group:
 class UserList:
     def __init__(
             self,
-            user_list: Optional[Iterable[User]] = None,
-            key: Optional[str] = None) -> None:
+            user_list: Optional[Iterable[User]] = None) -> None:
         self._list = list(user_list) if user_list is not None else []
-        self._key = key
 
     def __iter__(self) -> Iterator[User]:
         return self._list.__iter__()
@@ -135,16 +125,14 @@ class UserList:
             if user is not None:
                 user.update(data)
             else:
-                self.add(User(data, key=self._key))
+                self.add(User(data))
 
 
 class ChannelList:
     def __init__(
             self,
-            channel_list: Optional[Iterable[Channel]] = None,
-            key: Optional[str] = None) -> None:
+            channel_list: Optional[Iterable[Channel]] = None) -> None:
         self._list = list(channel_list) if channel_list is not None else []
-        self._key = key
 
     def __iter__(self) -> Iterator[Channel]:
         return self._list.__iter__()
@@ -175,16 +163,14 @@ class ChannelList:
             if channel is not None:
                 channel.update(data)
             else:
-                self.add(Channel(data, key=self._key))
+                self.add(Channel(data))
 
 
 class GroupList:
     def __init__(
             self,
-            group_list: Optional[Iterable[Group]] = None,
-            key: Optional[str] = None) -> None:
+            group_list: Optional[Iterable[Group]] = None) -> None:
         self._list = list(group_list) if group_list is not None else []
-        self._key = key
 
     def __iter__(self) -> Iterator[Group]:
         return self._list.__iter__()
@@ -213,12 +199,77 @@ class GroupList:
             if group is not None:
                 group.update(data)
             else:
-                self.add(Group(data, key=self._key))
+                self.add(Group(data))
 
 
 class Team:
-    pass
+    _auth_test: Dict = {}
+    _team_info: Dict = {}
+    _user_list = UserList()
+    _channel_list = ChannelList()
+    _group_list = GroupList()
 
+    @property
+    def url(self) -> str:
+        return self._auth_test['url']
+
+    @property
+    def team_id(self) -> str:
+        return self._team_info['id']
+
+    @property
+    def team_name(self) -> str:
+        return self._team_info['name']
+
+    @property
+    def team_domain(self) -> str:
+        return self._team_info['domain']
+
+    @property
+    def user_list(self) -> UserList:
+        return self._user_list
+
+    @property
+    def channel_list(self) -> ChannelList:
+        return self._channel_list
+
+    @property
+    def group_list(self) -> GroupList:
+        return self._group_list
+
+    @property
+    def bot(self) -> Optional[User]:
+        bot_id = self._auth_test.get('user_id', None)
+        if bot_id is not None:
+            return self._user_list.id_search(bot_id)
+        return None
+
+    def reset(
+            self,
+            client: slack.WebClient) -> None:
+        # auth.test
+        auth_test = client.auth_test()
+        if auth_test.get('ok', False):
+            self._auth_test = auth_test
+        # team.info
+        team_info = client.team_info()
+        if team_info.get('ok', False):
+            self._team_info = team_info['team']
+        # users.list
+        users_list = client.users_list()
+        if users_list.get('ok', False):
+            self._user_list = UserList(
+                    User(data) for data in users_list['members'])
+        # channels.list
+        channels_list = client.channels_list()
+        if channels_list.get('ok', False):
+            self._channel_list = ChannelList(
+                    Channel(data) for data in channels_list['channels'])
+        # groups.list
+        groups_list = client.groups_list()
+        if groups_list.get('ok', False):
+            self._group_list = GroupList(
+                    Group(data) for data in groups_list['groups'])
 '''
 class _Team:
     def __init__(self, key: Optional[str] = None) -> None:

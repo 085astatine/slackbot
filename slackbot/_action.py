@@ -28,6 +28,7 @@ class Action(Generic[OptionType]):
         # parameter
         self._name = name
         self._option = option
+        self._team = Team()
 
     def run(self, api_list: List[Dict[str, Any]]) -> None:
         pass
@@ -51,7 +52,7 @@ class Action(Generic[OptionType]):
 
     @property
     def team(self) -> Team:
-        return Team(key=self._key)
+        return self._team
 
     @staticmethod
     def option_list(name: str) -> OptionList:
