@@ -202,45 +202,48 @@ class GroupList:
 
 
 class Team:
-    _auth_test: Dict = {}
-    _team_info: Dict = {}
-    _user_list = UserList()
-    _channel_list = ChannelList()
-    _group_list = GroupList()
+    class Data:
+        auth_test: Dict = {}
+        team_info: Dict = {}
+        user_list = UserList()
+        channel_list = ChannelList()
+        group_list = GroupList()
+
+    _data = Data()
 
     @property
     def url(self) -> str:
-        return self._auth_test['url']
+        return self._data.auth_test['url']
 
     @property
     def team_id(self) -> str:
-        return self._team_info['id']
+        return self._data.team_info['id']
 
     @property
     def team_name(self) -> str:
-        return self._team_info['name']
+        return self._data.team_info['name']
 
     @property
     def team_domain(self) -> str:
-        return self._team_info['domain']
+        return self._data.team_info['domain']
 
     @property
     def user_list(self) -> UserList:
-        return self._user_list
+        return self._data.user_list
 
     @property
     def channel_list(self) -> ChannelList:
-        return self._channel_list
+        return self._data.channel_list
 
     @property
     def group_list(self) -> GroupList:
-        return self._group_list
+        return self._data.group_list
 
     @property
     def bot(self) -> Optional[User]:
-        bot_id = self._auth_test.get('user_id', None)
+        bot_id = self._data.auth_test.get('user_id', None)
         if bot_id is not None:
-            return self._user_list.id_search(bot_id)
+            return self._data.user_list.id_search(bot_id)
         return None
 
     def reset(
@@ -249,23 +252,23 @@ class Team:
         # auth.test
         auth_test = client.auth_test()
         if auth_test.get('ok', False):
-            self._auth_test = auth_test
+            self._data.auth_test = auth_test
         # team.info
         self.request_team_info(client)
         # users.list
         users_list = client.users_list()
         if users_list.get('ok', False):
-            self._user_list = UserList(
+            self._data.user_list = UserList(
                     User(data) for data in users_list['members'])
         # channels.list
         channels_list = client.channels_list()
         if channels_list.get('ok', False):
-            self._channel_list = ChannelList(
+            self._data.channel_list = ChannelList(
                     Channel(data) for data in channels_list['channels'])
         # groups.list
         groups_list = client.groups_list()
         if groups_list.get('ok', False):
-            self._group_list = GroupList(
+            self._data.group_list = GroupList(
                     Group(data) for data in groups_list['groups'])
 
     def request_team_info(
@@ -274,7 +277,7 @@ class Team:
         # team.info
         team_info = client.team_info()
         if team_info.get('ok', False):
-            self._team_info = team_info['team']
+            self._data.team_info = team_info['team']
 
     def request_channels_info(
             self,
@@ -283,7 +286,7 @@ class Team:
         # channels.info
         response = client.channels_info(channel=channel_id)
         if response.get('ok', False):
-            self._channel_list.update(response['channel'])
+            self._data.channel_list.update(response['channel'])
 
     def request_groups_info(
             self,
@@ -292,7 +295,7 @@ class Team:
         # groups.info
         response = client.groups_info(channel=group_id)
         if response.get('ok', False):
-            self._group_list.update(response['group'])
+            self._data.group_list.update(response['group'])
 
 
 '''
