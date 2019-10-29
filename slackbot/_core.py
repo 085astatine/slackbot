@@ -53,6 +53,7 @@ class Core(Action[CoreOption]):
                     option,
                     logger=logger or logging.getLogger(__name__))
         self._args = args
+        self._token: Optional[str] = None
         self._rtm_client: Optional[slack.RTMClient] = None
         self._web_client: Optional[slack.WebClient] = None
         self._is_running = False
@@ -61,6 +62,21 @@ class Core(Action[CoreOption]):
                 option=self.option.team,
                 logger=self._logger.getChild('UpdateTeam'))
         self._action_dict = action_dict or {}
+
+    def token(self) -> str:
+        if self._token is None:
+            token_file = pathlib.Path(self.option.token_file)
+            if not token_file.exists():
+                self._logger.error(
+                        'token file \'%s\' does not exist',
+                        token_file.resolve().as_posix())
+            with token_file.open() as fin:
+                self._token = fin.read().strip()
+            self._logger.info(
+                    'token file \'%s\' has been loaded',
+                    token_file.resolve().as_posix())
+            self._logger.info('connecting to the Real Time Messaging API')
+        return self._token
 
     def start(
             self,
@@ -78,21 +94,22 @@ class Core(Action[CoreOption]):
     def register(self) -> None:
         self._update_team.register()
 
+    def update(self, client: slack.WebClient) -> None:
+        self._update_team.update(client)
+
     @staticmethod
     def option_list(name: str) -> OptionList['CoreOption']:
         return CoreOption.option_list(name)
 
     def _main_task(self, loop) -> asyncio.Future:
         self._is_running = True
-        # load token
-        token = self._load_token()
         # client
         self._rtm_client = slack.RTMClient(
-                token=token,
+                token=self.token(),
                 run_async=True,
                 loop=loop)
         self._web_client = slack.WebClient(
-                token=token,
+                token=self.token(),
                 run_async=True,
                 loop=loop)
         # register callback
@@ -111,20 +128,6 @@ class Core(Action[CoreOption]):
         return asyncio.gather(
                 rtm_task,
                 update_task)
-
-    def _load_token(self) -> str:
-        token_file = pathlib.Path(self.option.token_file)
-        if not token_file.exists():
-            self._logger.error(
-                    'token file \'%s\' does not exist',
-                    token_file.resolve().as_posix())
-        with token_file.open() as fin:
-            token = fin.read().strip()
-        self._logger.info(
-                'token file \'%s\' has been loaded',
-                token_file.resolve().as_posix())
-        self._logger.info('connecting to the Real Time Messaging API')
-        return token
 
     async def _update(self) -> None:
         while self._is_running:
