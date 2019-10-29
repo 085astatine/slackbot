@@ -7,8 +7,8 @@ import re
 from collections import OrderedDict
 from typing import (
         Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union)
+import slack
 from .. import Action, Option, OptionError, OptionList, unescape_text
-from .._team import Channel, User
 
 
 class Trigger(enum.Enum):
@@ -139,68 +139,70 @@ class Response(Action[ResponseOption]):
                 option,
                 logger=logger or logging.getLogger(__name__))
 
-    def run(self, api_list: List[Dict[str, Any]]) -> None:
-        for api in api_list:
-            if api['type'] == 'message' and 'subtype' not in api:
-                channel = self.team.channel_list.id_search(api['channel'])
-                if channel is None or channel.name not in self.option.channel:
-                    continue
-                user = self.team.user_list.id_search(api['user'])
-                if user is None:
-                    continue
-                _response(
-                        self,
-                        user,
-                        channel,
-                        api['text'])
+    def register(self) -> None:
+        self.register_callback(
+                event='message',
+                callback=self._response)
 
     @staticmethod
     def option_list(name: str) -> OptionList[ResponseOption]:
         return ResponseOption.option_list(name)
 
-
-def _response(
-        self: Response,
-        user: User,
-        channel: Channel,
-        message: str) -> None:
-    match = re.search(
-            r'(<@(?P<reply_to>[^|>]+)(|\|.+)>|)\s*(?P<text>.+)',
-            message)
-    if not match:
-        return
-    text = unescape_text(match.group('text'))
-    for pattern in self.option.pattern:
-        if text not in pattern.call:
-            continue
-        # params
-        params = {}
-        params['text'] = ''
-        params['channel'] = channel.id
-        # create text
-        if (self.team.bot is not None
-                and match.group('reply_to') == self.team.bot.id):
-            params['text'] += '<@{0}> '.format(user.id)
-            if self.option.trigger == Trigger.NON_REPLY:
-                return
-        elif self.option.trigger == Trigger.REPLY:
+    def _response(self, **payload) -> None:
+        data = payload['data']
+        client: Optional[slack.WebClient] = payload['web_client']
+        channel = self.team.channel_list.id_search(data['channel'])
+        if ('subtype' in data
+                or channel is None
+                or channel.name not in self.option.channel
+                or client is None):
             return
-        params['text'] += random.choice(pattern.response)
-        # username
-        if self.option.username is not None:
-            params['username'] = self.option.username
-        # icon
-        if self.option.icon is not None:
-            if _is_emoji(self.option.icon):
-                params['icon_emoji'] = self.option.icon
-            elif _is_url(self.option.icon):
-                params['icon_url'] = self.option.icon
-        # api call
-        self._logger.info(
-                "call from '{0}' on '{1}'".format(user.name, channel.name))
-        self.api_call(
-                'chat.postMessage',
-                **params)
+        # user
+        user = self.team.user_list.id_search(data['user'])
+        if user is None:
+            return
+        # message text
+        match = re.search(
+                    r'(<@(?P<reply_to>[^|>]+)(|\|.+)>|)\s*(?P<text>.+)',
+                    data['text'])
+        if not match:
+            return
+        text = unescape_text(match.group('text'))
+        # trigger
+        is_reply = (self.team.bot is not None
+                    and match.group('reply_to') == self.team.bot.id)
+        if ((is_reply and self.option.trigger is Trigger.NON_REPLY)
+                or (not is_reply and self.option.trigger is Trigger.REPLY)):
+            return
+        # pattern
+        for pattern in self.option.pattern:
+            if text not in pattern.call:
+                continue
+            params = {}
+            # text
+            response = random.choice(pattern.response)
+            params['text'] = '{0}{1}'.format(
+                    '<@{0}> '.format(user.id) if is_reply else '',
+                    response)
+            # username
+            if self.option.username is not None:
+                params['username'] = self.option.username
+            # icon
+            if self.option.icon is not None:
+                if _is_emoji(self.option.icon):
+                    params['icon_emoji'] = self.option.icon
+                elif _is_url(self.option.icon):
+                    params['icon_url'] = self.option.icon
+            # request
+            self._logger.info(
+                    'response: \'%s\' (from \'%s\') -> \'%s\'',
+                    text,
+                    user.name,
+                    response)
+            self._logger.debug('params: %r', params)
+            client.chat_postMessage(
+                    channel=channel.id,
+                    **params)
 
 
 def _is_url(value: str) -> bool:
