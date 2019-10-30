@@ -9,9 +9,7 @@ from typing import List, NamedTuple, Optional, Pattern
 import slack
 from .. import Action, Option, OptionList
 from .._team import Channel
-from ._download_thread import (
-        DownloadReport, DownloadReportType,
-        DownloadThread, DownloadThreadOption)
+from . import download
 
 
 class DownloadOption(NamedTuple):
@@ -19,7 +17,7 @@ class DownloadOption(NamedTuple):
     pattern: Pattern
     destination_directory: pathlib.Path
     least_size: Optional[int]
-    thread: DownloadThreadOption
+    thread: download.ThreadOption
 
     @staticmethod
     def option_list(
@@ -50,7 +48,7 @@ class DownloadOption(NamedTuple):
                     action=lambda x: int(x) if x is not None else None,
                     help='minimun file size'
                          ' regarded as a successful download'),
-             DownloadThreadOption.option_list(
+             download.ThreadOption.option_list(
                     name='thread',
                     help='download thread')],
             help=help)
@@ -60,7 +58,7 @@ class ReportInfo(NamedTuple):
     channel: Channel
 
 
-Report = DownloadReport[ReportInfo]
+Report = download.Report[ReportInfo]
 
 
 class Download(Action[DownloadOption]):
@@ -107,7 +105,7 @@ class Download(Action[DownloadOption]):
                     name,
                     url))
         # start thread
-        thread = DownloadThread(
+        thread = download.Thread(
                 info=ReportInfo(channel=channel),
                 report_queue=self._report_queue,
                 url=url,
@@ -120,16 +118,16 @@ def _post_report(
         client: slack.WebClient,
         option: DownloadOption,
         report: Report) -> None:
-    format_bytes = DownloadReport.format_bytes
+    format_bytes = download.Report.format_bytes
     message: List[str] = []
     # start
-    if report.type is DownloadReportType.START:
+    if report.type is download.ReportType.START:
         message.append('[{0}]:start <{1}> (size: {2})'.format(
                 report.path.name,
                 report.final_url,
                 format_bytes(report.progress.file_size)))
     # progress
-    elif report.type is DownloadReportType.PROGRESS:
+    elif report.type is download.ReportType.PROGRESS:
         message.append('[{0}]:progress'.format(report.path.name))
         if report.progress.file_size is not None:
             message.append(' {0}/{1} ({2:.2%})'.format(
@@ -147,7 +145,7 @@ def _post_report(
                     datetime.timedelta(
                             seconds=report.progress.remaining_time)))
     # finish
-    elif report.type is DownloadReportType.FINISH:
+    elif report.type is download.ReportType.FINISH:
         assert(report.saved_path is not None)
         if report.path == report.saved_path:
             message.append('[{0}]:finish'.format(report.path.name))
@@ -171,7 +169,7 @@ def _post_report(
                     format_bytes(option.least_size)))
             report.saved_path.unlink()
     # error
-    elif report.type is DownloadReportType.ERROR:
+    elif report.type is download.ReportType.ERROR:
         assert(report.error is not None)
         message.append('[{0}]:error {1} {2}'.format(
                 report.path.name,
