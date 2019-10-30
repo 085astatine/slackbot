@@ -28,14 +28,14 @@ class Pattern:
             self.call = (call,)
         else:
             self.call = tuple(call)
-        assert(all(map(lambda x: isinstance(x, str), self.call)))
+        assert all(map(lambda x: isinstance(x, str), self.call))
         # response
         self.response: Tuple[str, ...]
         if isinstance(response, str):
             self.response = (response,)
         else:
             self.response = tuple(response)
-        assert(all(map(lambda x: isinstance(x, str), self.response)))
+        assert all(map(lambda x: isinstance(x, str), self.response))
 
     def __repr__(self) -> str:
         return "{0}.{1}(call={2}, response={3})".format(

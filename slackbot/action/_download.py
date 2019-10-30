@@ -146,7 +146,7 @@ def _post_report(
                             seconds=report.progress.remaining_time)))
     # finish
     elif report.type is download.ReportType.FINISH:
-        assert(report.saved_path is not None)
+        assert report.saved_path is not None
         if report.path == report.saved_path:
             message.append('[{0}]:finish'.format(report.path.name))
         else:
@@ -170,7 +170,7 @@ def _post_report(
             report.saved_path.unlink()
     # error
     elif report.type is download.ReportType.ERROR:
-        assert(report.error is not None)
+        assert report.error is not None
         message.append('[{0}]:error {1} {2}'.format(
                 report.path.name,
                 report.error.__class__.__name__,
