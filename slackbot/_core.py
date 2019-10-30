@@ -3,11 +3,15 @@
 import argparse
 import asyncio
 import collections
+import concurrent
+import inspect
 import logging
 import pathlib
 import signal
 import sys
-from typing import Dict, List, NamedTuple, Optional, Type
+from typing import (
+        Any, Callable, Coroutine, Dict, List, NamedTuple, Optional, Type,
+        Union, cast)
 import slack
 import yaml
 from ._action import Action
@@ -132,10 +136,32 @@ class Core(Action[CoreOption]):
     async def _update(self) -> None:
         while self._is_running:
             if self._web_client is not None:
-                self.update(self._web_client)
+                await self._execute_update(self.update)
                 for action in self._action_dict.values():
-                    action.update(self._web_client)
+                    await self._execute_update(action.update)
             await asyncio.sleep(self.option.interval)
+
+    async def _execute_update(
+            self,
+            callback: Callable[
+                    [slack.WebClient],
+                    Union[None, Coroutine[Any, Any, None]]]) -> None:
+        if inspect.iscoroutinefunction(callback):
+            await cast(Coroutine[Any, Any, None], callback(self._web_client))
+        else:
+            self._execute_update_in_thread(
+                    cast(Callable[[slack.WebClient], None], callback))
+
+    def _execute_update_in_thread(
+            self,
+            callback: Callable[[slack.WebClient], None]) -> None:
+        client = slack.WebClient(
+                token=self.token())
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(callback, client)
+            while future.running():
+                pass
+            future.result()
 
 
 def create(
