@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import time
 from typing import Callable, Dict, NamedTuple, Optional
 import slack
 from ._action import Action
@@ -34,12 +35,13 @@ class UpdateTeam(Action[UpdateTeamOption]):
                 name,
                 option,
                 logger=logger or logging.getLogger(__name__))
+        self._last_reset_time = time.perf_counter()
 
     def register(self) -> None:
         # open
         self.register_callback(
                 event='open',
-                callback=self._reset)
+                callback=self._initialize)
         # team_domain_change, team_rename
         for event in ('team_domain_change', 'team_rename'):
             self.register_callback(
@@ -88,8 +90,19 @@ class UpdateTeam(Action[UpdateTeamOption]):
                 event='message',
                 callback=self._message)
 
-    def _reset(self, **payload) -> None:
-        self._logger.debug('reset team')
+    def update(self, client: slack.WebClient) -> None:
+        if self.option.reset_interval is None:
+            return
+        current = time.perf_counter()
+        if (current - self._last_reset_time) > self.option.reset_interval:
+            self._logger.debug(
+                    'reset team (interval %f s)',
+                    current - self._last_reset_time)
+            self._last_reset_time = current
+            self.team.reset(client)
+
+    def _initialize(self, **payload) -> None:
+        self._logger.debug('initialze team')
         client: Optional[slack.WebClient] = payload.get('web_client', None)
         if client is not None:
             self.team.reset(client)
