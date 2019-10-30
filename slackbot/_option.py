@@ -4,12 +4,13 @@ import collections
 import sys
 from typing import (
         Any, Callable, Dict, Generic, Iterable, List, NamedTuple, Optional,
-        Tuple, Type, TypeVar, Union)
+        Type, TypeVar, Union)
 import yaml
 
 
 class OptionError(Exception):
     def __init__(self, message: str) -> None:
+        super().__init__()
         self.message = message
 
     def __str__(self) -> str:
@@ -76,15 +77,17 @@ class Option:
         return value
 
     def help_message(self) -> str:
-        ss = []
-        if len(self.help) != 0:
-            ss.append('{0} '.format(self.help))
+        message = []
+        if self.help:
+            message.append('{0} '.format(self.help))
         if self.choices is not None:
-            ss.append('{{{0}}}'.format(', '.join(map(str, self.choices))))
+            message.append(
+                    '{{{0}}}'.format(', '.join(map(str, self.choices))))
         if isinstance(self.default, (str, int, float, bool)):
-            ss.append('(default: {0})'.format(self.default))
-        ss.append('({0})'.format('required' if self.required else 'optional'))
-        return ''.join(ss)
+            message.append('(default: {0})'.format(self.default))
+        message.append(
+                '({0})'.format('required' if self.required else 'optional'))
+        return ''.join(message)
 
     def sample_message(self, indent: int = 0) -> List[str]:
         line: List[str] = []
@@ -127,32 +130,32 @@ class OptionList(Generic[OptionType]):
                     value=input.value.get(option.name, None))
             try:
                 result[option.name] = option.evaluate(child_input)
-            except OptionError as e:
-                sys.stderr.write('{0}\n'.format(str(e)))
+            except OptionError as error:
+                sys.stderr.write('{0}\n'.format(str(error)))
                 is_error = True
         # check unrecognized arguments
         unused_key_list = sorted(
                     set(input.value.keys())
                     .difference(option.name for option in self._list))
-        if len(unused_key_list) != 0:
+        if unused_key_list:
             is_error = True
             sys.stderr.write(
                     '{0} has unrecognized arguments: {1}\n'
                     .format(self.name, ', '.join(map(repr, unused_key_list))))
         if is_error:
             sys.exit(2)
-        """to immutable: dict -> namedtuple('_', ...), list -> tuple"""
+
+        # to immutable: dict -> namedtuple('_', ...), list -> tuple
         def to_immutable(value: Any) -> Any:
             if isinstance(value, dict):
                 for key in value.keys():
                     value[key] = to_immutable(value[key])
                 return collections.namedtuple('_', value.keys())(**value)
-            elif isinstance(value, list):
+            if isinstance(value, list):
                 return tuple(to_immutable(i) for i in value)
-            else:
-                return value
-        return self._type(**dict((key, to_immutable(value))
-                                 for key, value in result.items()))
+            return value
+        return self._type(**dict(
+                (key, to_immutable(value)) for key, value in result.items()))
 
     def sample_message(self, indent: int = 0) -> List[str]:
         line = []
@@ -163,8 +166,8 @@ class OptionList(Generic[OptionType]):
             line.extend(option.sample_message(indent + 2))
         return line
 
-    def append(self, x: Option) -> None:
-        self._list.append(x)
+    def append(self, option: Option) -> None:
+        self._list.append(option)
 
     def extend(self, iterable: Iterable[Option]) -> None:
         self._list.extend(iterable)
