@@ -2,8 +2,8 @@
 
 import logging
 from typing import (
-        Any, Dict, Generic, List, NamedTuple, Optional, Tuple, TypeVar)
-from ._client import Client
+        Callable, Generic, NamedTuple, Optional, TypeVar)
+import slack
 from ._option import OptionList
 from ._team import Team
 
@@ -19,7 +19,6 @@ class Action(Generic[OptionType]):
     def __init__(self,
                  name: str,
                  option: OptionType,
-                 key: Optional[str] = None,
                  logger: Optional[logging.Logger] = None) -> None:
         # logger
         if not hasattr(self, '_logger'):
@@ -29,14 +28,13 @@ class Action(Generic[OptionType]):
         # parameter
         self._name = name
         self._option = option
-        self._key = key
-        self._client = Client(key=self._key, logger=self._logger)
+        self._team = Team()
 
-    def run(self, api_list: List[Dict[str, Any]]) -> None:
+    def register(self) -> None:
         pass
 
-    def api_call(self, method: str, **kwargs):
-        return self._client.api_call(method, **kwargs)
+    def update(self, client: slack.WebClient) -> None:
+        pass
 
     @property
     def name(self) -> str:
@@ -48,11 +46,21 @@ class Action(Generic[OptionType]):
 
     @property
     def team(self) -> Team:
-        return Team(key=self._key)
+        return self._team
 
     @staticmethod
     def option_list(name: str) -> OptionList:
         return OptionList(NoneOption, name, [])
+
+    @classmethod
+    def register_callback(
+            cls,
+            *,
+            event: str,
+            callback: Callable) -> None:
+        slack.RTMClient.on(
+                event=event,
+                callback=callback)
 
 
 def escape_text(string: str) -> str:

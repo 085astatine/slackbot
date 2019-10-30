@@ -36,5 +36,4 @@ if __name__ == '__main__':
                              'Dummy': DummyAction,
                              'Response': slackbot.action.Response},
                 logger=logger)
-    bot.initialize()
     bot.start()

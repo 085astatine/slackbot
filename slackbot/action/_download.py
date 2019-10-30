@@ -5,10 +5,9 @@ import logging
 import pathlib
 import queue
 import re
-from typing import Any, Dict, List, NamedTuple, NewType, Optional, Pattern
-import requests
+from typing import List, NamedTuple, Optional, Pattern
+import slack
 from .. import Action, Option, OptionList
-from .._client import Client
 from .._team import Channel
 from ._download_thread import (
         DownloadReport, DownloadReportType,
@@ -69,49 +68,58 @@ class Download(Action[DownloadOption]):
             self,
             name: str,
             option: DownloadOption,
-            key: Optional[str] = None,
             logger: Optional[logging.Logger] = None) -> None:
         super().__init__(
                 name,
                 option,
-                key=key,
                 logger=logger or logging.getLogger(__name__))
-        self._report_queue: queue.Queue[Report] = queue.Queue()
+        self._report_queue: 'queue.Queue[Report]' = queue.Queue()
 
-    def run(self, api_list: List[Dict[str, Any]]) -> None:
-        for api in api_list:
-            if api['type'] == 'message' and 'subtype' not in api:
-                channel = self.team.channel_list.id_search(api['channel'])
-                if channel is None or channel.name not in self.option.channel:
-                    continue
-                match = self.option.pattern.match(api['text'].strip())
-                if match:
-                    name = match.group('name')
-                    url = match.group('url')
-                    path = self.option.destination_directory.joinpath(name)
-                    self._logger.info('detect: name={0}, url={1}'.format(
-                                name,
-                                url))
-                    # start thread
-                    thread = DownloadThread(
-                            info=ReportInfo(channel=channel),
-                            report_queue=self._report_queue,
-                            url=url,
-                            path=path,
-                            option=self._option.thread)
-                    thread.start()
-        # report queue
+    def register(self) -> None:
+        self.register_callback(
+                event='message',
+                callback=self._call)
+
+    def update(self, client: slack.WebClient) -> None:
         while not self._report_queue.empty():
             report = self._report_queue.get()
             self._logger.debug('report: {0}'.format(report))
-            _post_report(self, report)
+            _post_report(client, self.option, report)
 
     @staticmethod
     def option_list(name: str) -> OptionList['DownloadOption']:
         return DownloadOption.option_list(name)
 
+    def _call(self, **payload) -> None:
+        data = payload['data']
+        channel = self.team.channel_list.id_search(data['channel'])
+        if ('subtype' in data
+                or channel is None
+                or channel.name not in self.option.channel):
+            return
+        match = self.option.pattern.match(data['text'].strip())
+        if not match:
+            return
+        name = match.group('name')
+        url = match.group('url')
+        path = self.option.destination_directory.joinpath(name)
+        self._logger.info('detect: name={0}, url={1}'.format(
+                    name,
+                    url))
+        # start thread
+        thread = DownloadThread(
+                info=ReportInfo(channel=channel),
+                report_queue=self._report_queue,
+                url=url,
+                path=path,
+                option=self._option.thread)
+        thread.start()
 
-def _post_report(self: Download, report: Report) -> None:
+
+def _post_report(
+        client: slack.WebClient,
+        option: DownloadOption,
+        report: Report) -> None:
     format_bytes = DownloadReport.format_bytes
     message: List[str] = []
     # start
@@ -152,15 +160,15 @@ def _post_report(self: Download, report: Report) -> None:
                     format_bytes(report.progress.average_speed),
                     datetime.timedelta(seconds=report.progress.elapsed_time)))
         # file size check
-        if (self.option.least_size is not None
+        if (option.least_size is not None
                 and (report.progress.downloaded_size
-                     < self.option.least_size)):
+                     < option.least_size)):
             message.append('\n')
             message.append('[{0}]:delete'.format(report.saved_path.name))
             message.append(' because the file is smaller than least size')
             message.append(' ({0} < {1})'.format(
                     format_bytes(report.progress.downloaded_size),
-                    format_bytes(self.option.least_size)))
+                    format_bytes(option.least_size)))
             report.saved_path.unlink()
     # error
     elif report.type is DownloadReportType.ERROR:
@@ -170,7 +178,6 @@ def _post_report(self: Download, report: Report) -> None:
                 report.error.__class__.__name__,
                 report.error))
     # post message
-    params: Dict[str, Any] = {
-                'text': ''.join(message),
-                'channel': report.info.channel.id}
-    response = self.api_call('chat.postMessage', **params)
+    client.chat_postMessage(
+            channel=report.info.channel.id,
+            text=''.join(message))

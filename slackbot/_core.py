@@ -1,23 +1,28 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import asyncio
 import collections
+import concurrent
+import inspect
 import logging
 import pathlib
+import signal
 import sys
-import threading
-import time
-from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Type
+from typing import (
+        Any, Callable, Coroutine, Dict, List, NamedTuple, Optional, Type,
+        Union, cast)
+import slack
 import yaml
 from ._action import Action
-from ._client import Client
 from ._option import Option, OptionList, OptionParser
-from ._team import Team
+from ._update_team import UpdateTeam, UpdateTeamOption
 
 
 class CoreOption(NamedTuple):
     token_file: pathlib.Path
     interval: float
+    team: UpdateTeamOption
 
     @staticmethod
     def option_list(
@@ -33,7 +38,10 @@ class CoreOption(NamedTuple):
              Option('interval',
                     default=1.0,
                     type=float,
-                    help='interval seconds to read real time messaging API')],
+                    help='interval seconds to read real time messaging API'),
+             UpdateTeamOption.option_list(
+                    name='team',
+                    help='update team info')],
             help=help)
 
 
@@ -49,50 +57,111 @@ class Core(Action[CoreOption]):
                     option,
                     logger=logger or logging.getLogger(__name__))
         self._args = args
+        self._token: Optional[str] = None
+        self._rtm_client: Optional[slack.RTMClient] = None
+        self._web_client: Optional[slack.WebClient] = None
+        self._is_running = False
+        self._update_team = UpdateTeam(
+                name='UpdateTeam',
+                option=self.option.team,
+                logger=self._logger.getChild('UpdateTeam'))
         self._action_dict = action_dict or {}
-        self._team = Team(
-                client=Client(
-                    logger=self._logger.getChild('Team')))
 
-    def initialize(self) -> None:
-        # load token
-        token_file = pathlib.Path(self.option.token_file)
-        if not token_file.exists():
-            self._logger.error("token file '{0}' does not exist"
-                               .format(token_file.resolve().as_posix()))
-        with token_file.open() as fin:
-            token = fin.read().strip()
-        self._logger.info("token file '{0}' has been loaded"
-                          .format(token_file.resolve().as_posix()))
-        # client, team
-        self._client.setup(token)
-        self._team.initialize(token)
-
-    def start(self) -> None:
-        self._logger.info('connecting to the Real Time Messaging API')
-        if self._client.rtm_connect():
+    def token(self) -> str:
+        if self._token is None:
+            token_file = pathlib.Path(self.option.token_file)
+            if not token_file.exists():
+                self._logger.error(
+                        'token file \'%s\' does not exist',
+                        token_file.resolve().as_posix())
+            with token_file.open() as fin:
+                self._token = fin.read().strip()
             self._logger.info(
-                        'connecting to the Real Time Messaging API: success')
-            while True:
-                timer = threading.Thread(
-                            name='CoreTimer',
-                            target=lambda: time.sleep(self.option.interval))
-                timer.start()
-                api_list = self._client.rtm_read()
-                for action in self._action_dict.values():
-                    action.run(api_list)
-                self.run(api_list)
-                timer.join()
-        else:
-            self._logger.error(
-                        'connecting to the Real Time Messaging API: failed')
+                    'token file \'%s\' has been loaded',
+                    token_file.resolve().as_posix())
+            self._logger.info('connecting to the Real Time Messaging API')
+        return self._token
 
-    def run(self, api_list: List[Dict[str, Any]]) -> None:
-        self._team.update(api_list)
+    def start(
+            self,
+            loop: Optional[asyncio.AbstractEventLoop] = None) -> None:
+        loop = loop or asyncio.get_event_loop()
+        task = self._main_task(loop=loop)
+        loop.run_until_complete(task)
+
+    def stop(self) -> None:
+        self._logger.info('slackbot is shutting down')
+        self._is_running = False
+        if self._rtm_client is not None:
+            self._rtm_client.stop()
+
+    def register(self) -> None:
+        self._update_team.register()
+
+    def update(self, client: slack.WebClient) -> None:
+        self._update_team.update(client)
 
     @staticmethod
     def option_list(name: str) -> OptionList['CoreOption']:
         return CoreOption.option_list(name)
+
+    def _main_task(self, loop) -> asyncio.Future:
+        self._is_running = True
+        # client
+        self._rtm_client = slack.RTMClient(
+                token=self.token(),
+                run_async=True,
+                loop=loop)
+        self._web_client = slack.WebClient(
+                token=self.token(),
+                run_async=True,
+                loop=loop)
+        # register callback
+        self.register()
+        for action in self._action_dict.values():
+            action.register()
+        # task
+        rtm_task = self._rtm_client.start()
+        update_task = asyncio.ensure_future(
+                self._update(),
+                loop=loop)
+        # signal handler
+        signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
+        for sig in signals:
+            loop.add_signal_handler(sig, self.stop)
+        return asyncio.gather(
+                rtm_task,
+                update_task)
+
+    async def _update(self) -> None:
+        while self._is_running:
+            if self._web_client is not None:
+                await self._execute_update(self.update)
+                for action in self._action_dict.values():
+                    await self._execute_update(action.update)
+            await asyncio.sleep(self.option.interval)
+
+    async def _execute_update(
+            self,
+            callback: Callable[
+                    [slack.WebClient],
+                    Union[None, Coroutine[Any, Any, None]]]) -> None:
+        if inspect.iscoroutinefunction(callback):
+            await cast(Coroutine[Any, Any, None], callback(self._web_client))
+        else:
+            self._execute_update_in_thread(
+                    cast(Callable[[slack.WebClient], None], callback))
+
+    def _execute_update_in_thread(
+            self,
+            callback: Callable[[slack.WebClient], None]) -> None:
+        client = slack.WebClient(
+                token=self.token())
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(callback, client)
+            while future.running():
+                pass
+            future.result()
 
 
 def create(
@@ -158,7 +227,9 @@ def create(
         logger.error(message)
         sys.stderr.write('{0}\n'.format(message))
         sys.exit(1)
-    config_yaml = yaml.load(option.config.open())
+    config_yaml = yaml.load(
+            option.config.open(),
+            Loader=yaml.SafeLoader)
     option_dict = {key: parser.parse(config_yaml.get(key, None))
                    for key, parser in option_parser_list.items()}
     logger.debug('config: {0}'.format(option_dict))
