@@ -81,7 +81,7 @@ class Download(Action[DownloadOption]):
     def update(self, client: slack.WebClient) -> None:
         while not self._report_queue.empty():
             report = self._report_queue.get()
-            self._logger.debug('report: {0}'.format(report))
+            self._logger.debug('report: %s', report)
             _post_report(client, self.option, report)
 
     @staticmethod
@@ -101,9 +101,7 @@ class Download(Action[DownloadOption]):
         name = match.group('name')
         url = match.group('url')
         path = self.option.destination_directory.joinpath(name)
-        self._logger.info('detect: name={0}, url={1}'.format(
-                    name,
-                    url))
+        self._logger.info('detect: name=\'%s\', url=\'%s\'', name, url)
         # start thread
         thread = download.Thread(
                 info=ReportInfo(channel=channel),
