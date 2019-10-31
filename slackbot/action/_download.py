@@ -7,9 +7,9 @@ import queue
 import re
 from typing import List, NamedTuple, Optional, Pattern
 import slack
-from .. import Action, Option, OptionList
-from .._team import Channel
+from .. import Action, Channel, Option, OptionList
 from . import download
+from ._option import AvatarOption
 
 
 class DownloadOption(NamedTuple):
@@ -18,6 +18,7 @@ class DownloadOption(NamedTuple):
     destination_directory: pathlib.Path
     least_size: Optional[int]
     thread: download.ThreadOption
+    avatar: AvatarOption
 
     @staticmethod
     def option_list(
@@ -50,7 +51,10 @@ class DownloadOption(NamedTuple):
                          ' regarded as a successful download'),
              download.ThreadOption.option_list(
                     name='thread',
-                    help='download thread')],
+                    help='download thread'),
+             AvatarOption.option_list(
+                    name='avatar',
+                    help='avatar')],
             help=help)
 
 
@@ -174,6 +178,9 @@ def _post_report(
                 report.error.__class__.__name__,
                 report.error))
     # post message
+    params = {}
+    params['text'] = ''.join(message)
+    params.update(option.avatar.params())
     client.chat_postMessage(
             channel=report.info.channel.id,
-            text=''.join(message))
+            **params)
