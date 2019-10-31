@@ -76,7 +76,7 @@ class Download(Action[DownloadOption]):
     def register(self) -> None:
         self.register_callback(
                 event='message',
-                callback=self._call)
+                callback=self._callback)
 
     def update(self, client: slack.WebClient) -> None:
         while not self._report_queue.empty():
@@ -88,7 +88,7 @@ class Download(Action[DownloadOption]):
     def option_list(name: str) -> OptionList['DownloadOption']:
         return DownloadOption.option_list(name)
 
-    def _call(self, **payload) -> None:
+    def _callback(self, **payload) -> None:
         data = payload['data']
         channel = self.team.channel_list.id_search(data['channel'])
         if ('subtype' in data
