@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 
+import copy
 import enum
 import logging
 import random
 import re
-from collections import OrderedDict
-from typing import (
-        Any, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union)
+from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
 import slack
 from .. import Action, Option, OptionError, OptionList, unescape_text
 
@@ -20,22 +19,12 @@ class Trigger(enum.Enum):
 class Pattern:
     def __init__(
             self,
-            call: Union[str, Iterable[str]],
-            response: Union[str, Iterable[str]]) -> None:
-        # call
-        self.call: Tuple[str, ...]
-        if isinstance(call, str):
-            self.call = (call,)
-        else:
-            self.call = tuple(call)
-        assert(all(map(lambda x: isinstance(x, str), self.call)))
-        # response
-        self.response: Tuple[str, ...]
-        if isinstance(response, str):
-            self.response = (response,)
-        else:
-            self.response = tuple(response)
-        assert(all(map(lambda x: isinstance(x, str), self.response)))
+            call: Iterable[str],
+            response: Iterable[str]) -> None:
+        self._call: Tuple[str, ...] = tuple(call)
+        self._response: Tuple[str, ...] = tuple(response)
+        assert all(map(lambda x: isinstance(x, str), self.call))
+        assert all(map(lambda x: isinstance(x, str), self.response))
 
     def __repr__(self) -> str:
         return "{0}.{1}(call={2}, response={3})".format(
@@ -44,9 +33,17 @@ class Pattern:
                 repr(self.call),
                 repr(self.response))
 
+    @property
+    def call(self) -> Tuple[str, ...]:
+        return self._call
+
+    @property
+    def response(self) -> Tuple[str, ...]:
+        return self._response
+
 
 class ResponseOption(NamedTuple):
-    channel: List[str]
+    channel: Tuple[str, ...]
     trigger: Trigger
     pattern: Tuple[Pattern, ...]
     username: Optional[str]
@@ -57,49 +54,35 @@ class ResponseOption(NamedTuple):
             name: str,
             help: str = '') -> OptionList['ResponseOption']:
         # translate to Trigger
-        to_trigger: Dict[str, Trigger] = OrderedDict()
-        to_trigger['non-reply'] = Trigger.NON_REPLY
-        to_trigger['reply'] = Trigger.REPLY
-        to_trigger['any'] = Trigger.ANY
+        to_trigger: Dict[str, Trigger] = {
+                'non-reply': Trigger.NON_REPLY,
+                'reply': Trigger.REPLY,
+                'any': Trigger.ANY}
 
         # translate to Pattern
-        def parse_pattern(data: Any) -> Pattern:
-            if isinstance(data, Pattern):
-                return data
-            # type check
-            elif (isinstance(data, dict)
-                    and 'call' in data
-                    and (isinstance(data['call'], str)
-                         or (hasattr(data['call'], '__iter__')
-                             and all(map(lambda x: isinstance(x, str),
-                                         data['call']))))
-                    and 'response' in data
-                    and (isinstance(data['response'], str)
-                         or (hasattr(data['response'], '__iter__')
-                             and all(map(lambda x: isinstance(x, str),
-                                         data['response']))))
-                    and len(data) == 2):
-                return Pattern(**data)
-            else:
-                message = (
-                        'could not convert to Pattern: \'{0}\''
-                        .format(data))
-                raise OptionError(message)
+        def parse_pattern(data) -> Pattern:
+            kwargs = copy.deepcopy(data)
+            if isinstance(kwargs, dict):
+                for key in ('call', 'response'):
+                    if key in kwargs and isinstance(kwargs[key], str):
+                        kwargs[key] = [kwargs[key]]
+            try:
+                return Pattern(**kwargs)
+            except (TypeError, AssertionError):
+                raise OptionError(
+                        'could not convert to Pattern: \'{0}\''.format(data))
 
         # translate to list of Patterns
-        def parse_pattern_list(data: Any) -> List[Pattern]:
-            result: List[Pattern] = []
+        def parse_pattern_list(data) -> List[Pattern]:
             if isinstance(data, dict):
-                result.append(parse_pattern(data))
-            elif hasattr(data, '__iter__') and not isinstance(data, str):
-                for element in data:
-                    result.append(parse_pattern(element))
-            elif data is not None:
-                message = (
+                return [parse_pattern(data)]
+            if isinstance(data, Iterable) and not isinstance(data, str):
+                return [parse_pattern(element) for element in data]
+            if data is None:
+                return []
+            raise OptionError(
                     'could not convert to Pattern\'s list: \'{0}\''
                     .format(data))
-                raise OptionError(message)
-            return result
 
         return OptionList(
             ResponseOption,
@@ -113,7 +96,7 @@ class ResponseOption(NamedTuple):
                     help='target channel name (list or string)'),
              Option('trigger',
                     default='non-reply',
-                    action=lambda x: to_trigger.get(x),
+                    action=to_trigger.get,
                     choices=to_trigger.keys(),
                     help='response trigger'),
              Option('pattern',

@@ -76,19 +76,19 @@ class Download(Action[DownloadOption]):
     def register(self) -> None:
         self.register_callback(
                 event='message',
-                callback=self._call)
+                callback=self._callback)
 
     def update(self, client: slack.WebClient) -> None:
         while not self._report_queue.empty():
             report = self._report_queue.get()
-            self._logger.debug('report: {0}'.format(report))
+            self._logger.debug('report: %s', report)
             _post_report(client, self.option, report)
 
     @staticmethod
     def option_list(name: str) -> OptionList['DownloadOption']:
         return DownloadOption.option_list(name)
 
-    def _call(self, **payload) -> None:
+    def _callback(self, **payload) -> None:
         data = payload['data']
         channel = self.team.channel_list.id_search(data['channel'])
         if ('subtype' in data
@@ -101,9 +101,7 @@ class Download(Action[DownloadOption]):
         name = match.group('name')
         url = match.group('url')
         path = self.option.destination_directory.joinpath(name)
-        self._logger.info('detect: name={0}, url={1}'.format(
-                    name,
-                    url))
+        self._logger.info('detect: name=\'%s\', url=\'%s\'', name, url)
         # start thread
         thread = download.Thread(
                 info=ReportInfo(channel=channel),
@@ -146,7 +144,7 @@ def _post_report(
                             seconds=report.progress.remaining_time)))
     # finish
     elif report.type is download.ReportType.FINISH:
-        assert(report.saved_path is not None)
+        assert report.saved_path is not None
         if report.path == report.saved_path:
             message.append('[{0}]:finish'.format(report.path.name))
         else:
@@ -170,7 +168,7 @@ def _post_report(
             report.saved_path.unlink()
     # error
     elif report.type is download.ReportType.ERROR:
-        assert(report.error is not None)
+        assert report.error is not None
         message.append('[{0}]:error {1} {2}'.format(
                 report.path.name,
                 report.error.__class__.__name__,

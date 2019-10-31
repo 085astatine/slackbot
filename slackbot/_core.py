@@ -202,7 +202,7 @@ def create(
     # log level
     if option.verbose:
         logger.setLevel(logging.DEBUG)
-    logger.debug('command line option: {0}'.format(option))
+    logger.debug('command line option: %s', option)
     # option parser
     option_parser_list: Dict[str, OptionParser] = collections.OrderedDict()
     option_parser_list['Core'] = OptionParser(Core.option_list('Core'))
@@ -232,7 +232,7 @@ def create(
             Loader=yaml.SafeLoader)
     option_dict = {key: parser.parse(config_yaml.get(key, None))
                    for key, parser in option_parser_list.items()}
-    logger.debug('config: {0}'.format(option_dict))
+    logger.debug('config: %s', option_dict)
     return Core(name,
                 option,
                 option_dict['Core'],
