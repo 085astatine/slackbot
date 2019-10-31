@@ -8,6 +8,7 @@ import re
 from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
 import slack
 from .. import Action, Option, OptionError, OptionList, unescape_text
+from ._option import AvatarOption
 
 
 class Trigger(enum.Enum):
@@ -46,8 +47,7 @@ class ResponseOption(NamedTuple):
     channel: Tuple[str, ...]
     trigger: Trigger
     pattern: Tuple[Pattern, ...]
-    username: Optional[str]
-    icon: Optional[str]
+    avatar: AvatarOption
 
     @staticmethod
     def option_list(
@@ -103,11 +103,9 @@ class ResponseOption(NamedTuple):
                     sample=[{'call': ['ping'], 'response': ['pong']}],
                     action=parse_pattern_list,
                     help='response pattern'),
-             Option('username',
-                    help='username'),
-             Option('icon',
-                    action=_check_icon,
-                    help='user icon (:emoji: or http://url/to/icon)')],
+             AvatarOption.option_list(
+                    name='avatar',
+                    help='avatar')],
             help=help)
 
 
@@ -167,15 +165,8 @@ class Response(Action[ResponseOption]):
             params['text'] = '{0}{1}'.format(
                     '<@{0}> '.format(user.id) if is_reply else '',
                     response)
-            # username
-            if self.option.username is not None:
-                params['username'] = self.option.username
-            # icon
-            if self.option.icon is not None:
-                if _is_emoji(self.option.icon):
-                    params['icon_emoji'] = self.option.icon
-                elif _is_url(self.option.icon):
-                    params['icon_url'] = self.option.icon
+            # avatar
+            params.update(self.option.avatar.params())
             # request
             self._logger.info(
                     'response: \'%s\' (from \'%s\') -> \'%s\'',
@@ -186,20 +177,3 @@ class Response(Action[ResponseOption]):
             client.chat_postMessage(
                     channel=channel.id,
                     **params)
-
-
-def _is_url(value: str) -> bool:
-    return bool(re.match(r'https?://[\w/:%#$&\?\(\)~\.\=\+\-]+', value))
-
-
-def _is_emoji(value: str) -> bool:
-    return bool(re.match(':[^:]+:', value))
-
-
-def _check_icon(value: Optional[str]) -> Optional[str]:
-    if value is not None and not (_is_emoji(value) or _is_url(value)):
-        message = (
-                'icon is nether an emoji nor a url: {0}'
-                .format(value))
-        raise OptionError(message)
-    return value
