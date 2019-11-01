@@ -12,7 +12,7 @@ class IconType(enum.Enum):
 
     @staticmethod
     def string_to(value: str) -> Optional['IconType']:
-        if re.match(':[^:]+:', value):
+        if re.match(r'^:[^:]+:$', value):
             return IconType.EMOJI
         if re.match(r'https?://[\w/:%#$&\?\(\)~\.\=\+\-]+', value):
             return IconType.URL
@@ -33,6 +33,12 @@ class Icon:
         type_ = IconType.string_to(self.value)
         assert type_ is not None
         return type_
+
+    def __repr__(self) -> str:
+        return '{0}.{1}(value={2})'.format(
+                self.__class__.__module__,
+                self.__class__.__name__,
+                repr(self.value))
 
 
 class AvatarOption(NamedTuple):
