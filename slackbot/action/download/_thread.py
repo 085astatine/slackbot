@@ -104,10 +104,10 @@ class Thread(threading.Thread, Generic[ReportInfo]):
                         temp_path=temp_file_path,
                         response=response)
                 # progress
-                content_length = response.headers.get('Content-Length', '')
                 progress = Progress(
-                        file_size=(int(content_length)
-                                   if content_length.isdigit() else None),
+                        file_size=(int(response.headers['Content-Length'])
+                                   if 'Content-Length' in response.headers
+                                   else None),
                         speedmeter_size=self._option.speedmeter_size)
                 progress_timer = ProgressReportTimer(
                         interval=self._option.report_interval)
