@@ -34,6 +34,12 @@ class Icon:
         assert type_ is not None
         return type_
 
+    def __repr__(self) -> str:
+        return '{0}.{1}(value={2})'.format(
+                self.__class__.__module__,
+                self.__class__.__name__,
+                repr(self.value))
+
 
 class AvatarOption(NamedTuple):
     username: Optional[str]
