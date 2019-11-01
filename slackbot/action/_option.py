@@ -12,7 +12,7 @@ class IconType(enum.Enum):
 
     @staticmethod
     def string_to(value: str) -> Optional['IconType']:
-        if re.match(':[^:]+:', value):
+        if re.match(r'^:[^:]+:$', value):
             return IconType.EMOJI
         if re.match(r'https?://[\w/:%#$&\?\(\)~\.\=\+\-]+', value):
             return IconType.URL
