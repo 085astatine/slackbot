@@ -19,7 +19,7 @@ class SpeedMeter:
                 time=time.perf_counter()))
 
     def speed(self) -> Optional[float]:
-        if self._deque:
+        if not self._deque:
             return None
         valuedelta = self._deque[-1].value - self._deque[0].value
         timedelta = self._deque[-1].time - self._deque[0].time
