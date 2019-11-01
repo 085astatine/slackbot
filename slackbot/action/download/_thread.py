@@ -99,18 +99,19 @@ class Thread(threading.Thread, Generic[ReportInfo]):
                 response = requests.get(self._url, stream=True)
                 # status code check
                 response.raise_for_status()
-                # start report
-                reporter.start(
-                        temp_path=temp_file_path,
-                        response=response)
                 # progress
-                content_length = response.headers.get('Content-Length', '')
                 progress = Progress(
-                        file_size=(int(content_length)
-                                   if content_length.isdigit() else None),
+                        file_size=(int(response.headers['Content-Length'])
+                                   if 'Content-Length' in response.headers
+                                   else None),
                         speedmeter_size=self._option.speedmeter_size)
                 progress_timer = ProgressReportTimer(
                         interval=self._option.report_interval)
+                # start report
+                reporter.start(
+                        temp_path=temp_file_path,
+                        response=response,
+                        progress=progress.report())
                 # download
                 for data in response.iter_content(
                         chunk_size=self._option.chunk_size):
