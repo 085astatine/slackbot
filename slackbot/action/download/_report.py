@@ -98,10 +98,12 @@ class Reporter(Generic[ReportInfo]):
     def start(
             self,
             temp_path: pathlib.Path,
-            response: requests.Response) -> None:
+            response: requests.Response,
+            progress: ProgressReport) -> None:
         self._temp_path = temp_path
         self._final_url = response.url
         self._response_header = response.headers
+        self._progress = progress
         # report
         self.report(ReportType.START)
 
