@@ -32,6 +32,7 @@ if __name__ == '__main__':
     bot = slackbot.create(
                 'Sample',
                 action_dict={'APILogger': slackbot.action.APILogger,
+                             'ClearHistory': slackbot.action.ClearHistory,
                              'Download': slackbot.action.Download,
                              'Dummy': DummyAction,
                              'Response': slackbot.action.Response},
