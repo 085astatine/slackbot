@@ -2,7 +2,8 @@
 
 import logging
 from typing import (
-        Callable, Generic, NamedTuple, Optional, TypeVar)
+        Any, Callable, Coroutine, Generic, NamedTuple, Optional, TypeVar,
+        Union)
 import slack
 from ._option import OptionList
 from ._team import Team
@@ -33,7 +34,7 @@ class Action(Generic[OptionType]):
     def register(self) -> None:
         pass
 
-    def update(self, client: slack.WebClient) -> None:
+    def update(self, client: slack.WebClient) -> Union[None, Coroutine[Any, Any, None]]:
         pass
 
     @property
