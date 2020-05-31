@@ -98,8 +98,8 @@ class Core(Action[CoreOption]):
     def register(self) -> None:
         self._update_team.register()
 
-    def update(self, client: slack.WebClient) -> None:
-        self._update_team.update(client)
+    async def update(self, client: slack.WebClient) -> None:
+        await self._update_team.update(client)
 
     @staticmethod
     def option_list(name: str) -> OptionList['CoreOption']:

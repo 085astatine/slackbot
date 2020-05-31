@@ -246,53 +246,53 @@ class Team:
             return self._data.user_list.id_search(bot_id)
         return None
 
-    def reset(
+    async def reset(
             self,
             client: slack.WebClient) -> None:
         # auth.test
-        auth_test = client.auth_test()
+        auth_test = await client.auth_test()
         if auth_test.get('ok', False):
             self._data.auth_test = auth_test
         # team.info
-        self.request_team_info(client)
+        await self.request_team_info(client)
         # users.list
-        users_list = client.users_list()
+        users_list = await client.users_list()
         if users_list.get('ok', False):
             self._data.user_list = UserList(
                     User(data) for data in users_list['members'])
         # channels.list
-        channels_list = client.channels_list()
+        channels_list = await client.channels_list()
         if channels_list.get('ok', False):
             self._data.channel_list = ChannelList(
                     Channel(data) for data in channels_list['channels'])
         # groups.list
-        groups_list = client.groups_list()
+        groups_list = await client.groups_list()
         if groups_list.get('ok', False):
             self._data.group_list = GroupList(
                     Group(data) for data in groups_list['groups'])
 
-    def request_team_info(
+    async def request_team_info(
             self,
             client: slack.WebClient) -> None:
         # team.info
-        team_info = client.team_info()
+        team_info = await client.team_info()
         if team_info.get('ok', False):
             self._data.team_info = team_info['team']
 
-    def request_channels_info(
+    async def request_channels_info(
             self,
             client: slack.WebClient,
             channel_id: str) -> None:
         # channels.info
-        response = client.channels_info(channel=channel_id)
+        response = await client.channels_info(channel=channel_id)
         if response.get('ok', False):
             self._data.channel_list.update(response['channel'])
 
-    def request_groups_info(
+    async def request_groups_info(
             self,
             client: slack.WebClient,
             group_id: str) -> None:
         # groups.info
-        response = client.groups_info(channel=group_id)
+        response = await client.groups_info(channel=group_id)
         if response.get('ok', False):
             self._data.group_list.update(response['group'])
