@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import enum
 from typing import Any, Dict, Iterable, Iterator, List, Optional
 import slack
 
@@ -24,6 +25,14 @@ class User:
     @property
     def name(self) -> str:
         return self._data['name']
+
+
+class ChannelType(enum.Enum):
+    UNKNOWN = enum.auto()
+    CHANNEL = enum.auto()
+    GROUP = enum.auto()
+    IM = enum.auto()
+    MPIM = enum.auto()
 
 
 class Channel:
