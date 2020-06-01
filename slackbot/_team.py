@@ -57,6 +57,15 @@ class Channel:
         return self._data['name']
 
     @property
+    def type(self) -> ChannelType:
+        return (
+            ChannelType.CHANNEL if self._data.get('is_channel', False)
+            else ChannelType.GROUP if self._data.get('is_group', False)
+            else ChannelType.IM if self._data.get('is_im', False)
+            else ChannelType.MPIM if self._data.get('is_mpim', False)
+            else ChannelType.UNKNOWN)
+
+    @property
     def members(self) -> List[User]:
         return list(filter(
                 None,
@@ -66,6 +75,10 @@ class Channel:
     @property
     def is_archived(self) -> bool:
         return self._data['is_archived']
+
+    @property
+    def is_private(self) -> bool:
+        return self.type is not ChannelType.CHANNEL
 
 
 class Group:
