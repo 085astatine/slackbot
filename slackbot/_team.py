@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import enum
-from typing import Any, Dict, Iterable, Iterator, List, Optional
+from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional
 import slack
 
 
@@ -35,6 +35,12 @@ class ChannelType(enum.Enum):
     MPIM = enum.auto()
 
 
+class ChannelTopic(NamedTuple):
+    value: str
+    creator: str
+    last_set: int
+
+
 class Channel:
     def __init__(
             self,
@@ -64,6 +70,24 @@ class Channel:
             else ChannelType.IM if self._data.get('is_im', False)
             else ChannelType.MPIM if self._data.get('is_mpim', False)
             else ChannelType.UNKNOWN)
+
+    @property
+    def topic(self) -> Optional[ChannelTopic]:
+        if 'topic' not in self._data:
+            return None
+        return ChannelTopic(
+                value=self._data['topic']['value'],
+                creator=self._data['topic']['creator'],
+                last_set=self._data['topic']['last_set'])
+
+    @property
+    def purpose(self) -> Optional[ChannelTopic]:
+        if 'purpose' not in self._data:
+            return None
+        return ChannelTopic(
+                value=self._data['purpose']['value'],
+                creator=self._data['purpose']['creator'],
+                last_set=self._data['purpose']['last_set'])
 
     @property
     def members(self) -> List[User]:
