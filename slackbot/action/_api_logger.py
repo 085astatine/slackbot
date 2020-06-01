@@ -57,7 +57,7 @@ class APILogger(Action[APILoggerOption]):
         return APILoggerOption.option_list(name)
 
     def _logging_callback(self, event: str) -> Callable:
-        def callback(**payload) -> None:
+        async def callback(**payload) -> None:
             data = payload['data']
             # raw
             if self.option.mode is Mode.raw:

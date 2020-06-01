@@ -129,7 +129,7 @@ class Response(Action[ResponseOption]):
     def option_list(name: str) -> OptionList[ResponseOption]:
         return ResponseOption.option_list(name)
 
-    def _response(self, **payload) -> None:
+    async def _response(self, **payload) -> None:
         data = payload['data']
         client: Optional[slack.WebClient] = payload['web_client']
         channel = self.team.channel_list.id_search(data['channel'])
@@ -174,6 +174,6 @@ class Response(Action[ResponseOption]):
                     user.name,
                     response)
             self._logger.debug('params: %r', params)
-            client.chat_postMessage(
+            await client.chat_postMessage(
                     channel=channel.id,
                     **params)

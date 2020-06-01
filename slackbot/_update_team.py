@@ -90,7 +90,7 @@ class UpdateTeam(Action[UpdateTeamOption]):
                 event='message',
                 callback=self._message)
 
-    def update(self, client: slack.WebClient) -> None:
+    async def update(self, client: slack.WebClient) -> None:
         if self.option.reset_interval is None:
             return
         current = time.perf_counter()
@@ -99,18 +99,18 @@ class UpdateTeam(Action[UpdateTeamOption]):
                     'reset team (interval %f s)',
                     current - self._last_reset_time)
             self._last_reset_time = current
-            self.team.reset(client)
+            await self.team.reset(client)
 
-    def _initialize(self, **payload) -> None:
+    async def _initialize(self, **payload) -> None:
         self._logger.debug('initialze team')
         client: Optional[slack.WebClient] = payload.get('web_client', None)
         if client is not None:
-            self.team.reset(client)
+            await self.team.reset(client)
 
-    def _update_team(self, **payload) -> None:
+    async def _update_team(self, **payload) -> None:
         client: Optional[slack.WebClient] = payload.get('web_client', None)
         if client is not None:
-            self.team.request_team_info(client)
+            await self.team.request_team_info(client)
 
     def _update_user(self, get_user: Callable[[Dict], Dict]) -> Callable:
         def callback(**payload) -> None:
@@ -146,21 +146,21 @@ class UpdateTeam(Action[UpdateTeamOption]):
             self.team.group_list.remove(get_id(data))
         return callback
 
-    def _move_member(self, **payload) -> None:
+    async def _move_member(self, **payload) -> None:
         data = payload['data']
         channel_type = data['channek_type']
         client: Optional[slack.WebClient] = payload.get('web_client', None)
         if client is not None:
             if channel_type == 'C':
-                self.team.request_channels_info(client, data['channel'])
+                await self.team.request_channels_info(client, data['channel'])
             elif channel_type == 'G':
-                self.team.request_groups_info(client, data['channel'])
+                await self.team.request_groups_info(client, data['channel'])
 
-    def _message(self, **payload) -> None:
+    async def _message(self, **payload) -> None:
         data = payload['data']
         client: Optional[slack.WebClient] = payload.get('web_client', None)
         subtype = data.get('subtype', None)
         if subtype in ('channel_purpose', 'channel_topic'):
-            self.team.request_channels_info(client, data['channel'])
+            await self.team.request_channels_info(client, data['channel'])
         elif subtype in ('group_purpose', 'group_topic'):
-            self.team.request_groups_info(client, data['channel'])
+            await self.team.request_groups_info(client, data['channel'])
