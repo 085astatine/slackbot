@@ -90,13 +90,6 @@ class Channel:
                 last_set=self._data['purpose']['last_set'])
 
     @property
-    def members(self) -> List[User]:
-        return list(filter(
-                None,
-                map(Team().user_list.id_search,
-                    self._data['members'])))
-
-    @property
     def is_archived(self) -> bool:
         return self._data['is_archived']
 
