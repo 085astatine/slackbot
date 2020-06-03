@@ -98,39 +98,6 @@ class Channel:
         return self.type is not ChannelType.CHANNEL
 
 
-class Group:
-    def __init__(
-            self,
-            data: Dict[str, Any]) -> None:
-        self._data = data
-
-    def get(self, key: str) -> Any:
-        return self._data[key]
-
-    def update(self, data: Dict[str, Any]) -> None:
-        self._data.clear()
-        self._data.update(data)
-
-    @property
-    def id(self) -> str:
-        return self._data['id']
-
-    @property
-    def name(self) -> str:
-        return self._data['name']
-
-    @property
-    def members(self) -> List[User]:
-        return list(filter(
-                None,
-                map(Team().user_list.id_search,
-                    self._data['members'])))
-
-    @property
-    def is_archived(self) -> bool:
-        return self._data['is_archived']
-
-
 class UserList:
     def __init__(
             self,
@@ -204,49 +171,12 @@ class ChannelList:
                 self.add(Channel(data))
 
 
-class GroupList:
-    def __init__(
-            self,
-            group_list: Optional[Iterable[Group]] = None) -> None:
-        self._list = list(group_list) if group_list is not None else []
-
-    def __iter__(self) -> Iterator[Group]:
-        return self._list.__iter__()
-
-    def __len__(self) -> int:
-        return self._list.__len__()
-
-    def id_search(self, id: str) -> Optional[Group]:
-        return next((group for group in self._list if group.id == id), None)
-
-    def name_search(self, name: str) -> Optional[Group]:
-        return next((group for group in self._list if group.name == name),
-                    None)
-
-    def add(self, group: Group) -> None:
-        self._list.append(group)
-
-    def remove(self, id: str) -> None:
-        group = self.id_search(id)
-        if group is not None:
-            self._list.remove(group)
-
-    def update(self, data: Dict[str, Any]) -> None:
-        if 'id' in data:
-            group = self.id_search(data['id'])
-            if group is not None:
-                group.update(data)
-            else:
-                self.add(Group(data))
-
-
 class Team:
     class Data:
         auth_test: Dict = {}
         team_info: Dict = {}
         user_list = UserList()
         channel_list = ChannelList()
-        group_list = GroupList()
 
     _data = Data()
 
@@ -275,10 +205,6 @@ class Team:
         return self._data.channel_list
 
     @property
-    def group_list(self) -> GroupList:
-        return self._data.group_list
-
-    @property
     def bot(self) -> Optional[User]:
         bot_id = self._data.auth_test.get('user_id', None)
         if bot_id is not None:
@@ -300,15 +226,10 @@ class Team:
             self._data.user_list = UserList(
                     User(data) for data in users_list['members'])
         # channels.list
-        channels_list = await client.channels_list()
+        channels_list = await client.conversations_list()
         if channels_list.get('ok', False):
             self._data.channel_list = ChannelList(
                     Channel(data) for data in channels_list['channels'])
-        # groups.list
-        groups_list = await client.groups_list()
-        if groups_list.get('ok', False):
-            self._data.group_list = GroupList(
-                    Group(data) for data in groups_list['groups'])
 
     async def request_team_info(
             self,
@@ -318,20 +239,11 @@ class Team:
         if team_info.get('ok', False):
             self._data.team_info = team_info['team']
 
-    async def request_channels_info(
+    async def request_conversations_info(
             self,
             client: slack.WebClient,
             channel_id: str) -> None:
         # channels.info
-        response = await client.channels_info(channel=channel_id)
+        response = await client.conversations_info(channel=channel_id)
         if response.get('ok', False):
             self._data.channel_list.update(response['channel'])
-
-    async def request_groups_info(
-            self,
-            client: slack.WebClient,
-            group_id: str) -> None:
-        # groups.info
-        response = await client.groups_info(channel=group_id)
-        if response.get('ok', False):
-            self._data.group_list.update(response['group'])
