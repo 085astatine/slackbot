@@ -37,6 +37,9 @@ class Action(Generic[OptionType]):
     def update(self, client: slack.WebClient) -> Union[None, Coroutine[Any, Any, None]]:
         pass
 
+    def stop(self) -> None:
+        pass
+
     @property
     def name(self) -> str:
         return self._name
