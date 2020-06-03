@@ -52,39 +52,24 @@ class UpdateTeam(Action[UpdateTeamOption]):
             self.register_callback(
                     event=event,
                     callback=self._update_user(lambda x: x['user']))
-        # channel_rename, channel_created
-        for event in ('channel_rename', 'channel_created'):
+        # channel_rename, channel_created, group_rename
+        for event in ('channel_rename', 'channel_created', 'group_rename'):
             self.register_callback(
                     event=event,
                     callback=self._update_channel(
                             lambda x: x['channel']['id']))
-        # channel_archive, channel_unarchive
-        for event in ('channel_archive', 'channel_unarchive'):
+        # channel_archive, channel_unarchive, group_archive, group_unarchive
+        for event in (
+                'channel_archive', 'channel_unarchive',
+                'group_archive', 'group_unarchive'):
             self.register_callback(
                     event=event,
                     callback=self._update_channel(lambda x: x['channel']))
-        # channel_delete
-        self.register_callback(
-                event='channel_deleted',
-                callback=self._delete_channel(lambda x: x['channel']))
-        # group_rename
-        self.register_callback(
-                event='group_rename',
-                callback=self._update_group(lambda x: x['group']['id']))
-        # group_archive, group_unarchive
-        for event in ('group_archive', 'group_unarchive'):
+        # channel_delete, group_deleted
+        for event in ('channel_deleted', 'group_deleted'):
             self.register_callback(
                     event=event,
-                    callback=self._update_group(lambda x: x['group']))
-        # group_deleted
-        self.register_callback(
-                event='group_deleted',
-                callback=self._delete_group(lambda x: x['channel']))
-        # member_joined_channel, member_left_channel
-        for event in ('member_joined_channel', 'member_left_channel'):
-            self.register_callback(
-                    event=event,
-                    callback=self._move_member)
+                    callback=self._delete_channel(lambda x: x['channel']))
         # message
         self.register_callback(
                 event='message',
@@ -123,7 +108,7 @@ class UpdateTeam(Action[UpdateTeamOption]):
             data = payload['data']
             client: Optional[slack.WebClient] = payload.get('web_client', None)
             if client is not None:
-                self.team.request_channels_info(client, get_id(data))
+                self.team.request_conversations_info(client, get_id(data))
         return callback
 
     def _delete_channel(self, get_id: Callable[[Dict], str]) -> Callable:
@@ -132,35 +117,11 @@ class UpdateTeam(Action[UpdateTeamOption]):
             self.team.channel_list.remove(get_id(data))
         return callback
 
-    def _update_group(self, get_id: Callable[[Dict], str]) -> Callable:
-        def callback(**payload) -> None:
-            data = payload['data']
-            client: Optional[slack.WebClient] = payload.get('web_client', None)
-            if client is not None:
-                self.team.request_groups_info(client, get_id(data))
-        return callback
-
-    def _delete_group(self, get_id: Callable[[Dict], str]) -> Callable:
-        def callback(**payload) -> None:
-            data = payload['data']
-            self.team.group_list.remove(get_id(data))
-        return callback
-
-    async def _move_member(self, **payload) -> None:
-        data = payload['data']
-        channel_type = data['channek_type']
-        client: Optional[slack.WebClient] = payload.get('web_client', None)
-        if client is not None:
-            if channel_type == 'C':
-                await self.team.request_channels_info(client, data['channel'])
-            elif channel_type == 'G':
-                await self.team.request_groups_info(client, data['channel'])
-
     async def _message(self, **payload) -> None:
         data = payload['data']
         client: Optional[slack.WebClient] = payload.get('web_client', None)
         subtype = data.get('subtype', None)
-        if subtype in ('channel_purpose', 'channel_topic'):
-            await self.team.request_channels_info(client, data['channel'])
-        elif subtype in ('group_purpose', 'group_topic'):
-            await self.team.request_groups_info(client, data['channel'])
+        if subtype in (
+                'channel_purpose', 'channel_topic',
+                'group_purpose', 'group_topic'):
+            await self.team.request_conversations_info(client, data['channel'])
