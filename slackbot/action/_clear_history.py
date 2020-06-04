@@ -1,8 +1,11 @@
 # -*- cpding: utf-8 -*-
 
+import asyncio
 import datetime
 import logging
-from typing import Any, List, NamedTuple, Optional, Tuple, Union
+import threading
+from typing import Any, List, NamedTuple, Optional, Tuple, TypedDict, Union
+import slack
 from .. import Action, Option, OptionError, OptionList
 
 
@@ -72,6 +75,15 @@ class ClearHistoryOption(NamedTuple):
                 help=help)
 
 
+class _ExecutionStop(Exception):
+    pass
+
+
+class _DeleteTarget(TypedDict):
+    channel: str
+    ts: str
+
+
 class ClearHistory(Action[ClearHistoryOption]):
     def __init__(
             self,
@@ -82,7 +94,88 @@ class ClearHistory(Action[ClearHistoryOption]):
                 name,
                 option,
                 logger=logger or logging.getLogger(__name__))
+        self._execution_time: Optional[datetime.datetime] = None
+        self._thread: Optional[threading.Thread] = None
+        self._lock = threading.Lock()
+        self._is_stopped = False
+
+    async def update(self, client: slack.WebClient) -> None:
+        if not self.is_in_sleep() and self._thread is None:
+            self._execution_time = _now()
+            self._logger.info('execute clear at %s', self._execution_time)
+            self._thread = threading.Thread(
+                    target=lambda: asyncio.run(self._execute(
+                            client=slack.WebClient(
+                                    token=client.token,
+                                    run_async=True))))
+            self._thread.start()
+        if self._thread is not None and not self._thread.is_alive():
+            self._thread = None
+
+    def stop(self) -> None:
+        self._logger.info('request to stop execution')
+        with self._lock:
+            self._is_stopped = True
+
+    def is_in_sleep(self) -> bool:
+        return (self._execution_time is not None
+                and (_now() - self._execution_time
+                     < datetime.timedelta(seconds=self.option.sleep)))
+
+    async def _execute(self, client: slack.WebClient) -> None:
+        try:
+            targets: List[_DeleteTarget] = []
+            for channel in self.option.channels:
+                targets.extend(await self._target_messages(client, channel))
+        except _ExecutionStop:
+            self._logger.info('execution is stopped')
+            return
+
+    async def _target_messages(
+                self,
+                client: slack.WebClient,
+                channel_option: ChannelOption) -> List[_DeleteTarget]:
+        result: List[_DeleteTarget] = []
+        # channel
+        channel = self.team.channel_list.name_search(channel_option.name)
+        if channel is None:
+            self._logger.warning(
+                    'channel \'%s\' is not found',
+                    channel_option.name)
+            return result
+        # latest
+        if self._execution_time is None:
+            self._logger.error('execution time is None')
+            return result
+        latest = self._execution_time - channel_option.period
+        # request
+        for response in await client.conversations_history(
+                channel=channel.id,
+                latest=str(latest.timestamp()),
+                limit=1000):
+            response.validate()
+            await asyncio.sleep(self.option.api_interval)
+            result.extend(
+                    {'channel': channel.id,
+                     'ts': message['ts']}
+                    for message in response['messages'])
+            self._logger.debug(
+                    'channel "%s": add %d, total %d',
+                    channel.name,
+                    len(response['messages']),
+                    len(result))
+            self._can_continue()
+        return result
+
+    def _can_continue(self) -> None:
+        with self._lock:
+            if self._is_stopped:
+                raise _ExecutionStop()
 
     @staticmethod
     def option_list(name: str) -> OptionList[ClearHistoryOption]:
         return ClearHistoryOption.option_list(name)
+
+
+def _now() -> datetime.datetime:
+    return datetime.datetime.now(tz=datetime.timezone.utc)
