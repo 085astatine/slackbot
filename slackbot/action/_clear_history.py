@@ -129,11 +129,13 @@ class ClearHistory(Action[ClearHistoryOption]):
             for channel in self.option.channels:
                 targets.extend(await self._target_messages(client, channel))
             # delete
-            for target in targets:
+            for i, target in enumerate(targets):
                 self._logger.debug(
-                        'delete: channel "%s", %s',
+                        'delete %d/%d: channel "%s", %s',
+                        i + 1,
+                        len(targets),
                         target['channel'],
-                        datetime.datetime.fromtimestamp(float(target['ts'])))
+                        _to_datetime(target['ts']))
                 response = await client.chat_delete(**target)
                 response.validate()
                 await asyncio.sleep(self.option.api_interval)
@@ -166,15 +168,18 @@ class ClearHistory(Action[ClearHistoryOption]):
                 limit=1000):
             response.validate()
             await asyncio.sleep(self.option.api_interval)
-            result.extend(
-                    {'channel': channel.id,
-                     'ts': message['ts']}
-                    for message in response['messages'])
-            self._logger.debug(
-                    'channel "%s": add %d, total %d',
-                    channel.name,
-                    len(response['messages']),
-                    len(result))
+            if response['messages']:
+                result.extend(
+                        {'channel': channel.id,
+                         'ts': message['ts']}
+                        for message in response['messages'])
+                self._logger.debug(
+                        'channel "%s": add %d (%s - %s), total %d',
+                        channel.name,
+                        len(response['messages']),
+                        _to_datetime(response['messages'][0]['ts']),
+                        _to_datetime(response['messages'][-1]['ts']),
+                        len(result))
             self._can_continue()
         return result
 
@@ -190,3 +195,7 @@ class ClearHistory(Action[ClearHistoryOption]):
 
 def _now() -> datetime.datetime:
     return datetime.datetime.now(tz=datetime.timezone.utc)
+
+
+def _to_datetime(timestamp: str) -> datetime.datetime:
+    return datetime.datetime.fromtimestamp(float(timestamp))
