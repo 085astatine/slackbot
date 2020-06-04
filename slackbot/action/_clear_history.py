@@ -124,9 +124,20 @@ class ClearHistory(Action[ClearHistoryOption]):
 
     async def _execute(self, client: slack.WebClient) -> None:
         try:
+            # target
             targets: List[_DeleteTarget] = []
             for channel in self.option.channels:
                 targets.extend(await self._target_messages(client, channel))
+            # delete
+            for target in targets:
+                self._logger.debug(
+                        'delete: channel "%s", %s',
+                        target['channel'],
+                        datetime.datetime.fromtimestamp(float(target['ts'])))
+                response = await client.chat_delete(**target)
+                response.validate()
+                await asyncio.sleep(self.option.api_interval)
+                self._can_continue()
         except _ExecutionStop:
             self._logger.info('execution is stopped')
             return
