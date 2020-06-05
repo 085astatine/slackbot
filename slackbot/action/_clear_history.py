@@ -66,7 +66,7 @@ class ClearHistoryOption(NamedTuple):
                         help='clear execution interval of (seconds)'),
                  Option('api_interval',
                         type=float,
-                        default=1.0,
+                        default=5.0,
                         help='slack api execution interval (seconds)'),
                  Option('channels',
                         sample=[{'name': 'CHANNEL_NAME', 'period': 24}],
