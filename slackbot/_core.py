@@ -94,6 +94,8 @@ class Core(Action[CoreOption]):
         self._is_running = False
         if self._rtm_client is not None:
             self._rtm_client.stop()
+        for action in self._action_dict.values():
+            action.stop()
 
     def register(self) -> None:
         self._update_team.register()
