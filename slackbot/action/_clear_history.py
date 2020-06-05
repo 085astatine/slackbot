@@ -11,8 +11,8 @@ from .. import Action, Option, OptionError, OptionList
 
 class ChannelOption:
     def __init__(self, name: str, period: Union[float, int]) -> None:
-        assert(isinstance(name, str))
-        assert(isinstance(period, (float, int)))
+        assert isinstance(name, str)
+        assert isinstance(period, (float, int))
         self._name = name
         self._period = datetime.timedelta(hours=period)
 
