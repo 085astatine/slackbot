@@ -87,10 +87,10 @@ class UpdateTeam(Action[UpdateTeamOption]):
             await self.team.reset(client)
 
     async def _initialize(self, **payload) -> None:
-        self._logger.debug('initialze team')
+        self._logger.debug('initialize team')
         client: Optional[slack.WebClient] = payload.get('web_client', None)
         if client is not None:
-            await self.team.reset(client, limit=1000, logger=self._logger)
+            await self.team.initialize(client, limit=1000, logger=self._logger)
 
     async def _update_team(self, **payload) -> None:
         client: Optional[slack.WebClient] = payload.get('web_client', None)

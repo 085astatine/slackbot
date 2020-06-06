@@ -179,6 +179,7 @@ class Team:
         self._team_info: Dict = {}
         self._users = UserList()
         self._channels = ChannelList()
+        self._is_initialized = False
 
     @property
     def url(self) -> str:
@@ -210,6 +211,32 @@ class Team:
         if bot_id is not None:
             return self._users.id_search(bot_id)
         return None
+
+    async def initialize(
+            self,
+            client: slack.WebClient,
+            *,
+            limit: int = 0,
+            interval: float = 1.0,
+            logger: Optional[logging.Logger] = None) -> None:
+        # logging
+        if logger:
+            logger.debug('begin Team.initialize()')
+            if not self._is_initialized:
+                logger.warning('Team is already initialized')
+        # reset
+        await self.reset(
+                client,
+                limit=limit,
+                interval=interval,
+                logger=logger)
+        self._is_initialized = True
+        # logging
+        if logger:
+            logger.debug('begin Team.initialize()')
+
+    def is_initialized(self) -> bool:
+        return self._is_initialized
 
     async def reset(
             self,
