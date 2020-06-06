@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
+import asyncio
 import enum
+import logging
 from typing import Any, Dict, Iterable, Iterator, List, NamedTuple, Optional
 import slack
 
@@ -101,8 +103,8 @@ class Channel:
 class UserList:
     def __init__(
             self,
-            user_list: Optional[Iterable[User]] = None) -> None:
-        self._list = list(user_list) if user_list is not None else []
+            users: Optional[Iterable[User]] = None) -> None:
+        self._list = list(users) if users is not None else []
 
     def __iter__(self) -> Iterator[User]:
         return self._list.__iter__()
@@ -136,8 +138,8 @@ class UserList:
 class ChannelList:
     def __init__(
             self,
-            channel_list: Optional[Iterable[Channel]] = None) -> None:
-        self._list = list(channel_list) if channel_list is not None else []
+            channels: Optional[Iterable[Channel]] = None) -> None:
+        self._list = list(channels) if channels is not None else []
 
     def __iter__(self) -> Iterator[Channel]:
         return self._list.__iter__()
@@ -172,78 +174,178 @@ class ChannelList:
 
 
 class Team:
-    class Data:
-        auth_test: Dict = {}
-        team_info: Dict = {}
-        user_list = UserList()
-        channel_list = ChannelList()
-
-    _data = Data()
+    def __init__(self) -> None:
+        self._auth_test: Dict = {}
+        self._team_info: Dict = {}
+        self._users = UserList()
+        self._channels = ChannelList()
+        self._is_initialized = False
 
     @property
     def url(self) -> str:
-        return self._data.auth_test['url']
+        return self._auth_test['url']
 
     @property
     def team_id(self) -> str:
-        return self._data.team_info['id']
+        return self._team_info['id']
 
     @property
     def team_name(self) -> str:
-        return self._data.team_info['name']
+        return self._team_info['name']
 
     @property
     def team_domain(self) -> str:
-        return self._data.team_info['domain']
+        return self._team_info['domain']
 
     @property
-    def user_list(self) -> UserList:
-        return self._data.user_list
+    def users(self) -> UserList:
+        return self._users
 
     @property
-    def channel_list(self) -> ChannelList:
-        return self._data.channel_list
+    def channels(self) -> ChannelList:
+        return self._channels
 
     @property
     def bot(self) -> Optional[User]:
-        bot_id = self._data.auth_test.get('user_id', None)
+        bot_id = self._auth_test.get('user_id', None)
         if bot_id is not None:
-            return self._data.user_list.id_search(bot_id)
+            return self._users.id_search(bot_id)
         return None
+
+    async def initialize(
+            self,
+            client: slack.WebClient,
+            *,
+            limit: int = 200,
+            interval: float = 1.0,
+            logger: Optional[logging.Logger] = None) -> None:
+        # logging
+        if logger:
+            logger.debug('begin Team.initialize()')
+            if not self._is_initialized:
+                logger.warning('Team is already initialized')
+        # reset
+        await self.reset(
+                client,
+                limit=limit,
+                interval=interval,
+                logger=logger)
+        self._is_initialized = True
+        # logging
+        if logger:
+            logger.debug('begin Team.initialize()')
+
+    def is_initialized(self) -> bool:
+        return self._is_initialized
 
     async def reset(
             self,
-            client: slack.WebClient) -> None:
+            client: slack.WebClient,
+            *,
+            limit: int = 200,
+            interval: float = 1.0,
+            logger: Optional[logging.Logger] = None) -> None:
+        # logging
+        if logger:
+            logger.debug('begin Team.reset()')
         # auth.test
+        if logger:
+            logger.info('request auth.test')
         auth_test = await client.auth_test()
-        if auth_test.get('ok', False):
-            self._data.auth_test = auth_test
+        auth_test.validate()
+        self._auth_test = auth_test
         # team.info
-        await self.request_team_info(client)
+        await self.update_team(
+                client,
+                interval=interval,
+                logger=logger)
         # users.list
-        users_list = await client.users_list()
-        if users_list.get('ok', False):
-            self._data.user_list = UserList(
-                    User(data) for data in users_list['members'])
-        # channels.list
-        channels_list = await client.conversations_list()
-        if channels_list.get('ok', False):
-            self._data.channel_list = ChannelList(
-                    Channel(data) for data in channels_list['channels'])
+        await self.update_users(
+                client,
+                limit=limit,
+                interval=interval,
+                logger=logger)
+        # conversations.list
+        await self.update_channels(
+                client,
+                limit=limit,
+                interval=interval,
+                logger=logger)
+        # logging
+        if logger:
+            logger.debug('end Team.reset()')
 
-    async def request_team_info(
-            self,
-            client: slack.WebClient) -> None:
-        # team.info
-        team_info = await client.team_info()
-        if team_info.get('ok', False):
-            self._data.team_info = team_info['team']
-
-    async def request_conversations_info(
+    async def update_team(
             self,
             client: slack.WebClient,
-            channel_id: str) -> None:
-        # channels.info
+            *,
+            interval: float = 1.0,
+            logger: Optional[logging.Logger] = None) -> None:
+        if logger:
+            logger.info('request team.info')
+        response = await client.team_info()
+        response.validate()
+        self._team_info = response['team']
+        await asyncio.sleep(interval)
+
+    async def update_users(
+            self,
+            client: slack.WebClient,
+            *,
+            limit: int = 200,
+            interval: float = 1.0,
+            logger: Optional[logging.Logger] = None) -> None:
+        if logger:
+            logger.info('request conversations.list')
+        users: List[Dict] = []
+        for response in await client.users_list(limit=limit):
+            response.validate()
+            users.extend(response['members'])
+            if logger:
+                logger.debug(
+                        'get %d user, total %s',
+                        len(response['members']),
+                        len(users))
+            await asyncio.sleep(interval)
+        if logger:
+            logger.info('get %d users', len(users))
+        self._users = UserList(User(data) for data in users)
+
+    async def update_channels(
+            self,
+            client: slack.WebClient,
+            *,
+            limit: int = 200,
+            interval: float = 1.0,
+            logger: Optional[logging.Logger] = None) -> None:
+        if logger:
+            logger.info('request conversations.list')
+        channels: List[Dict] = []
+        for response in await client.conversations_list(limit=limit):
+            response.validate()
+            channels.extend(response['channels'])
+            if logger:
+                logger.debug(
+                        'get %d channel, total %s',
+                        len(response['channels']),
+                        len(channels))
+            await asyncio.sleep(interval)
+        if logger:
+            logger.info('get %d channels', len(channels))
+        self._channels = ChannelList(Channel(data) for data in channels)
+
+    async def update_channel(
+            self,
+            client: slack.WebClient,
+            channel_id: str,
+            *,
+            interval: float = 1.0,
+            logger: Optional[logging.Logger] = None) -> None:
+        if logger:
+            logger.info('request conversations.info channel=%s', channel_id)
         response = await client.conversations_info(channel=channel_id)
         if response.get('ok', False):
-            self._data.channel_list.update(response['channel'])
+            self._channels.update(response['channel'])
+        elif logger:
+            logger.warning('conversations.info failed: %s', response.data)
+        await asyncio.sleep(interval)

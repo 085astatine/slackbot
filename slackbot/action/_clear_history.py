@@ -100,7 +100,9 @@ class ClearHistory(Action[ClearHistoryOption]):
         self._is_stopped = False
 
     async def update(self, client: slack.WebClient) -> None:
-        if not self.is_in_sleep() and self._thread is None:
+        if (self.team.is_initialized()
+                and not self.is_in_sleep()
+                and self._thread is None):
             self._execution_time = _now()
             self._logger.info('execute clear at %s', self._execution_time)
             self._thread = threading.Thread(
@@ -152,7 +154,7 @@ class ClearHistory(Action[ClearHistoryOption]):
                 channel_option: ChannelOption) -> List[_DeleteTarget]:
         result: List[_DeleteTarget] = []
         # channel
-        channel = self.team.channel_list.name_search(channel_option.name)
+        channel = self.team.channels.name_search(channel_option.name)
         if channel is None:
             self._logger.warning(
                     'channel \'%s\' is not found',
