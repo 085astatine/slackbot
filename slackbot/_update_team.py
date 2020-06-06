@@ -9,7 +9,9 @@ from ._option import Option, OptionList
 
 
 class UpdateTeamOption(NamedTuple):
+    api_interval: float
     reset_interval: float
+    limit: int
 
     @staticmethod
     def option_list(
@@ -18,10 +20,18 @@ class UpdateTeamOption(NamedTuple):
         return OptionList(
             UpdateTeamOption,
             name,
-            [Option('reset_interval',
+            [Option('api_interval',
+                    type=float,
+                    default=1.0,
+                    help='slack api execution interval (seconds)'),
+             Option('reset_interval',
                     action=lambda x: float(x) if x is not None else None,
                     default=None,
-                    help='interval seconds to reset team info')],
+                    help='interval to reset team information (seconds)'),
+             Option('limit',
+                    type=int,
+                    default=200,
+                    help='number of items per api request')],
             help=help)
 
 
@@ -84,18 +94,29 @@ class UpdateTeam(Action[UpdateTeamOption]):
                     'reset team (interval %f s)',
                     current - self._last_reset_time)
             self._last_reset_time = current
-            await self.team.reset(client)
+            await self.team.reset(
+                    client,
+                    limit=self.option.limit,
+                    interval=self.option.api_interval,
+                    logger=self._logger)
 
     async def _initialize(self, **payload) -> None:
         self._logger.debug('initialize team')
         client: Optional[slack.WebClient] = payload.get('web_client', None)
         if client is not None:
-            await self.team.initialize(client, limit=1000, logger=self._logger)
+            await self.team.initialize(
+                    client,
+                    limit=self.option.limit,
+                    interval=self.option.api_interval,
+                    logger=self._logger)
 
     async def _update_team(self, **payload) -> None:
         client: Optional[slack.WebClient] = payload.get('web_client', None)
         if client is not None:
-            await self.team.update_team(client, logger=self._logger)
+            await self.team.update_team(
+                    client,
+                    interval=self.option.api_interval,
+                    logger=self._logger)
 
     def _update_user(self, get_user: Callable[[Dict], Dict]) -> Callable:
         def callback(**payload) -> None:
@@ -111,6 +132,7 @@ class UpdateTeam(Action[UpdateTeamOption]):
                 self.team.update_channel(
                         client,
                         get_id(data),
+                        interval=self.option.api_interval,
                         logger=self._logger)
         return callback
 
@@ -130,4 +152,5 @@ class UpdateTeam(Action[UpdateTeamOption]):
             await self.team.update_channel(
                     client,
                     data['channel'],
+                    interval=self.option.api_interval,
                     logger=self._logger)
