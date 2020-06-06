@@ -216,7 +216,7 @@ class Team:
             self,
             client: slack.WebClient,
             *,
-            limit: int = 0,
+            limit: int = 200,
             interval: float = 1.0,
             logger: Optional[logging.Logger] = None) -> None:
         # logging
@@ -242,7 +242,7 @@ class Team:
             self,
             client: slack.WebClient,
             *,
-            limit: int = 0,
+            limit: int = 200,
             interval: float = 1.0,
             logger: Optional[logging.Logger] = None) -> None:
         # logging
@@ -292,7 +292,7 @@ class Team:
             self,
             client: slack.WebClient,
             *,
-            limit: int = 0,
+            limit: int = 200,
             interval: float = 1.0,
             logger: Optional[logging.Logger] = None) -> None:
         if logger:
@@ -315,7 +315,7 @@ class Team:
             self,
             client: slack.WebClient,
             *,
-            limit: int = 0,
+            limit: int = 200,
             interval: float = 1.0,
             logger: Optional[logging.Logger] = None) -> None:
         if logger:
