@@ -222,11 +222,16 @@ class Team:
         if logger:
             logger.debug('begin Team.reset()')
         # auth.test
+        if logger:
+            logger.info('request auth.test')
         auth_test = await client.auth_test()
-        if auth_test.get('ok', False):
-            self._auth_test = auth_test
+        auth_test.validate()
+        self._auth_test = auth_test
         # team.info
-        await self.request_team_info(client)
+        await self.update_team(
+                client,
+                interval=interval,
+                logger=logger)
         # users.list
         await self.update_users(
                 client,
@@ -243,13 +248,18 @@ class Team:
         if logger:
             logger.debug('end Team.reset()')
 
-    async def request_team_info(
+    async def update_team(
             self,
-            client: slack.WebClient) -> None:
-        # team.info
-        team_info = await client.team_info()
-        if team_info.get('ok', False):
-            self._team_info = team_info['team']
+            client: slack.WebClient,
+            *,
+            interval: float = 1.0,
+            logger: Optional[logging.Logger] = None) -> None:
+        if logger:
+            logger.info('request team.info')
+        response = await client.team_info()
+        response.validate()
+        self._team_info = response['team']
+        await asyncio.sleep(interval)
 
     async def update_users(
             self,
@@ -297,11 +307,18 @@ class Team:
             logger.info('get %d channels', len(channels))
         self._channels = ChannelList(Channel(data) for data in channels)
 
-    async def request_conversations_info(
+    async def update_channel(
             self,
             client: slack.WebClient,
-            channel_id: str) -> None:
-        # conversations.info
+            channel_id: str,
+            *,
+            interval: float = 1.0,
+            logger: Optional[logging.Logger] = None) -> None:
+        if logger:
+            logger.info('request conversations.info channel=%s', channel_id)
         response = await client.conversations_info(channel=channel_id)
         if response.get('ok', False):
             self._channels.update(response['channel'])
+        elif logger:
+            logger.warning('conversations.info failed: %s', response.data)
+        await asyncio.sleep(interval)

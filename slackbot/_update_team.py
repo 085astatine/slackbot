@@ -95,7 +95,7 @@ class UpdateTeam(Action[UpdateTeamOption]):
     async def _update_team(self, **payload) -> None:
         client: Optional[slack.WebClient] = payload.get('web_client', None)
         if client is not None:
-            await self.team.request_team_info(client)
+            await self.team.update_team(client, logger=self._logger)
 
     def _update_user(self, get_user: Callable[[Dict], Dict]) -> Callable:
         def callback(**payload) -> None:
@@ -108,7 +108,10 @@ class UpdateTeam(Action[UpdateTeamOption]):
             data = payload['data']
             client: Optional[slack.WebClient] = payload.get('web_client', None)
             if client is not None:
-                self.team.request_conversations_info(client, get_id(data))
+                self.team.update_channel(
+                        client,
+                        get_id(data),
+                        logger=self._logger)
         return callback
 
     def _delete_channel(self, get_id: Callable[[Dict], str]) -> Callable:
@@ -124,4 +127,7 @@ class UpdateTeam(Action[UpdateTeamOption]):
         if subtype in (
                 'channel_purpose', 'channel_topic',
                 'group_purpose', 'group_topic'):
-            await self.team.request_conversations_info(client, data['channel'])
+            await self.team.update_channel(
+                    client,
+                    data['channel'],
+                    logger=self._logger)
