@@ -152,7 +152,7 @@ class ClearHistory(Action[ClearHistoryOption]):
                 channel_option: ChannelOption) -> List[_DeleteTarget]:
         result: List[_DeleteTarget] = []
         # channel
-        channel = self.team.channel_list.name_search(channel_option.name)
+        channel = self.team.channels.name_search(channel_option.name)
         if channel is None:
             self._logger.warning(
                     'channel \'%s\' is not found',

@@ -94,7 +94,7 @@ class Download(Action[DownloadOption]):
 
     async def _callback(self, **payload) -> None:
         data = payload['data']
-        channel = self.team.channel_list.id_search(data['channel'])
+        channel = self.team.channels.id_search(data['channel'])
         if ('subtype' in data
                 or channel is None
                 or channel.name not in self.option.channel):

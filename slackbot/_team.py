@@ -101,8 +101,8 @@ class Channel:
 class UserList:
     def __init__(
             self,
-            user_list: Optional[Iterable[User]] = None) -> None:
-        self._list = list(user_list) if user_list is not None else []
+            users: Optional[Iterable[User]] = None) -> None:
+        self._list = list(users) if users is not None else []
 
     def __iter__(self) -> Iterator[User]:
         return self._list.__iter__()
@@ -136,8 +136,8 @@ class UserList:
 class ChannelList:
     def __init__(
             self,
-            channel_list: Optional[Iterable[Channel]] = None) -> None:
-        self._list = list(channel_list) if channel_list is not None else []
+            channels: Optional[Iterable[Channel]] = None) -> None:
+        self._list = list(channels) if channels is not None else []
 
     def __iter__(self) -> Iterator[Channel]:
         return self._list.__iter__()
@@ -175,8 +175,8 @@ class Team:
     class Data:
         auth_test: Dict = {}
         team_info: Dict = {}
-        user_list = UserList()
-        channel_list = ChannelList()
+        users = UserList()
+        channels = ChannelList()
 
     _data = Data()
 
@@ -197,18 +197,18 @@ class Team:
         return self._data.team_info['domain']
 
     @property
-    def user_list(self) -> UserList:
-        return self._data.user_list
+    def users(self) -> UserList:
+        return self._data.users
 
     @property
-    def channel_list(self) -> ChannelList:
-        return self._data.channel_list
+    def channels(self) -> ChannelList:
+        return self._data.channels
 
     @property
     def bot(self) -> Optional[User]:
         bot_id = self._data.auth_test.get('user_id', None)
         if bot_id is not None:
-            return self._data.user_list.id_search(bot_id)
+            return self._data.users.id_search(bot_id)
         return None
 
     async def reset(
@@ -223,13 +223,13 @@ class Team:
         # users.list
         users_list = await client.users_list()
         if users_list.get('ok', False):
-            self._data.user_list = UserList(
+            self._data.users = UserList(
                     User(data) for data in users_list['members'])
-        # channels.list
-        channels_list = await client.conversations_list()
-        if channels_list.get('ok', False):
-            self._data.channel_list = ChannelList(
-                    Channel(data) for data in channels_list['channels'])
+        # conversations.list
+        conversations_list = await client.conversations_list()
+        if conversations_list.get('ok', False):
+            self._data.channels = ChannelList(
+                    Channel(data) for data in conversations_list['channels'])
 
     async def request_team_info(
             self,
@@ -243,7 +243,7 @@ class Team:
             self,
             client: slack.WebClient,
             channel_id: str) -> None:
-        # channels.info
+        # conversations.info
         response = await client.conversations_info(channel=channel_id)
         if response.get('ok', False):
-            self._data.channel_list.update(response['channel'])
+            self._data.channels.update(response['channel'])

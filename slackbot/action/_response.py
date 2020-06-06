@@ -132,14 +132,14 @@ class Response(Action[ResponseOption]):
     async def _response(self, **payload) -> None:
         data = payload['data']
         client: Optional[slack.WebClient] = payload['web_client']
-        channel = self.team.channel_list.id_search(data['channel'])
+        channel = self.team.channels.id_search(data['channel'])
         if ('subtype' in data
                 or channel is None
                 or channel.name not in self.option.channel
                 or client is None):
             return
         # user
-        user = self.team.user_list.id_search(data['user'])
+        user = self.team.users.id_search(data['user'])
         if user is None:
             return
         # message text

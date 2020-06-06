@@ -100,7 +100,7 @@ class UpdateTeam(Action[UpdateTeamOption]):
     def _update_user(self, get_user: Callable[[Dict], Dict]) -> Callable:
         def callback(**payload) -> None:
             data = payload['data']
-            self.team.user_list.update(get_user(data))
+            self.team.users.update(get_user(data))
         return callback
 
     def _update_channel(self, get_id: Callable[[Dict], str]) -> Callable:
@@ -114,7 +114,7 @@ class UpdateTeam(Action[UpdateTeamOption]):
     def _delete_channel(self, get_id: Callable[[Dict], str]) -> Callable:
         def callback(**payload) -> None:
             data = payload['data']
-            self.team.channel_list.remove(get_id(data))
+            self.team.channels.remove(get_id(data))
         return callback
 
     async def _message(self, **payload) -> None:
