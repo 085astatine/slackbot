@@ -16,6 +16,9 @@ class NoneOption(NamedTuple):
     pass
 
 
+_team = Team()
+
+
 class Action(Generic[OptionType]):
     def __init__(self,
                  name: str,
@@ -29,7 +32,7 @@ class Action(Generic[OptionType]):
         # parameter
         self._name = name
         self._option = option
-        self._team = Team()
+        self._team = _team
 
     def register(self) -> None:
         pass

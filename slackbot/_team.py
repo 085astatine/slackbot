@@ -172,43 +172,41 @@ class ChannelList:
 
 
 class Team:
-    class Data:
-        auth_test: Dict = {}
-        team_info: Dict = {}
-        users = UserList()
-        channels = ChannelList()
-
-    _data = Data()
+    def __init__(self) -> None:
+        self._auth_test: Dict = {}
+        self._team_info: Dict = {}
+        self._users = UserList()
+        self._channels = ChannelList()
 
     @property
     def url(self) -> str:
-        return self._data.auth_test['url']
+        return self._auth_test['url']
 
     @property
     def team_id(self) -> str:
-        return self._data.team_info['id']
+        return self._team_info['id']
 
     @property
     def team_name(self) -> str:
-        return self._data.team_info['name']
+        return self._team_info['name']
 
     @property
     def team_domain(self) -> str:
-        return self._data.team_info['domain']
+        return self._team_info['domain']
 
     @property
     def users(self) -> UserList:
-        return self._data.users
+        return self._users
 
     @property
     def channels(self) -> ChannelList:
-        return self._data.channels
+        return self._channels
 
     @property
     def bot(self) -> Optional[User]:
-        bot_id = self._data.auth_test.get('user_id', None)
+        bot_id = self._auth_test.get('user_id', None)
         if bot_id is not None:
-            return self._data.users.id_search(bot_id)
+            return self._users.id_search(bot_id)
         return None
 
     async def reset(
@@ -217,18 +215,18 @@ class Team:
         # auth.test
         auth_test = await client.auth_test()
         if auth_test.get('ok', False):
-            self._data.auth_test = auth_test
+            self._auth_test = auth_test
         # team.info
         await self.request_team_info(client)
         # users.list
         users_list = await client.users_list()
         if users_list.get('ok', False):
-            self._data.users = UserList(
+            self._users = UserList(
                     User(data) for data in users_list['members'])
         # conversations.list
         conversations_list = await client.conversations_list()
         if conversations_list.get('ok', False):
-            self._data.channels = ChannelList(
+            self._channels = ChannelList(
                     Channel(data) for data in conversations_list['channels'])
 
     async def request_team_info(
@@ -237,7 +235,7 @@ class Team:
         # team.info
         team_info = await client.team_info()
         if team_info.get('ok', False):
-            self._data.team_info = team_info['team']
+            self._team_info = team_info['team']
 
     async def request_conversations_info(
             self,
@@ -246,4 +244,4 @@ class Team:
         # conversations.info
         response = await client.conversations_info(channel=channel_id)
         if response.get('ok', False):
-            self._data.channels.update(response['channel'])
+            self._channels.update(response['channel'])
