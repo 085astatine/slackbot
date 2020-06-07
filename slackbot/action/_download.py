@@ -107,13 +107,12 @@ class Download(Action[DownloadOption]):
         path = self.option.destination_directory.joinpath(name)
         self._logger.info('detect: name=\'%s\', url=\'%s\'', name, url)
         # start thread
-        thread = download.Thread(
-                info=ReportInfo(channel=channel),
-                report_queue=self._report_queue,
+        download.download(
                 url=url,
                 path=path,
+                info=ReportInfo(channel=channel),
+                report_queue=self._report_queue,
                 option=self._option.thread)
-        thread.start()
 
 
 def _start_message(report: Report) -> str:
