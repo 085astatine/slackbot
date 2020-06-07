@@ -85,8 +85,7 @@ def _download(
         info: ReportInfo,
         report_queue: 'queue.Queue[Report[ReportInfo]]',
         option: Optional[ThreadOption] = None) -> None:
-    if option is None:
-        option = ThreadOption.option_list(name='').parse()
+    option = option or ThreadOption.option_list(name='').parse()
     # reporter
     reporter = Reporter(
             info=info,
@@ -151,6 +150,5 @@ def _download(
     except Exception as error:
         reporter.error(error=error)
         # remove temp file
-        if temp_file_path is not None:
-            if temp_file_path.exists():
-                temp_file_path.unlink()
+        if temp_file_path is not None and temp_file_path.exists():
+            temp_file_path.unlink()
