@@ -157,6 +157,11 @@ class OptionList(Generic[OptionType]):
         return self._type(**dict(
                 (key, to_immutable(value)) for key, value in result.items()))
 
+    def parse(self, data: Optional[Dict[str, Any]] = None) -> OptionType:
+        return self.evaluate(InputValue(
+                is_none=False,
+                value=data if data is not None else {}))
+
     def sample_message(self, indent: int = 0) -> List[str]:
         line = []
         if self.help:
@@ -178,8 +183,9 @@ class OptionParser:
         self._option_list = option_list
 
     def parse(self, data: Optional[Dict[str, Any]]) -> Any:
-        input = InputValue(False, data if data is not None else {})
-        return self._option_list.evaluate(input)
+        return self._option_list.evaluate(InputValue(
+                is_none=False,
+                value=data if data is not None else {}))
 
     def sample_message(self) -> str:
         return ''.join('{0}\n'.format(line)
