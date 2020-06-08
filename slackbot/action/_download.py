@@ -76,6 +76,9 @@ class Download(Action[DownloadOption]):
                 option,
                 logger=logger or logging.getLogger(__name__))
         self._report_queue: 'queue.Queue[Report]' = queue.Queue()
+        self._download_threads = download.ThreadGenerator(
+                report_queue=self._report_queue,
+                option=self.option.thread)
 
     def register(self) -> None:
         self.register_callback(
@@ -87,6 +90,9 @@ class Download(Action[DownloadOption]):
             report = self._report_queue.get()
             self._logger.debug('report: %s', report)
             _post_report(client, self.option, report)
+
+    def stop(self) -> None:
+        self._download_threads.cancel()
 
     @staticmethod
     def option_list(name: str) -> OptionList['DownloadOption']:
@@ -107,12 +113,10 @@ class Download(Action[DownloadOption]):
         path = self.option.destination_directory.joinpath(name)
         self._logger.info('detect: name=\'%s\', url=\'%s\'', name, url)
         # start thread
-        download.download(
+        self._download_threads.start(
                 url=url,
                 path=path,
-                info=ReportInfo(channel=channel),
-                report_queue=self._report_queue,
-                option=self._option.thread)
+                info=ReportInfo(channel=channel))
 
 
 def _start_message(report: Report) -> str:

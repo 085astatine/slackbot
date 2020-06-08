@@ -5,7 +5,7 @@ import re
 import shutil
 import tempfile
 import threading
-from typing import NamedTuple, Optional, TypeVar, TYPE_CHECKING
+from typing import Generic, List, NamedTuple, Optional, TypeVar, TYPE_CHECKING
 import requests
 from ... import Option, OptionList
 from ._exception import DownloadCancelled, IncompleteDownloadError
@@ -81,6 +81,40 @@ class Controller:
     def is_canceled(self) -> bool:
         with self._lock:
             return self._is_canceled
+
+
+class ThreadGenerator(Generic[ReportInfo]):
+    def __init__(
+            self,
+            report_queue: 'queue.Queue[Report[ReportInfo]]',
+            option: Optional[ThreadOption] = None) -> None:
+        self._option = option
+        self._report_queue = report_queue
+        self._controllers: List[Controller] = []
+
+    def start(
+            self,
+            url: str,
+            path: pathlib.Path,
+            info: ReportInfo) -> None:
+        self.cleanup()
+        controller = download(
+                url=url,
+                path=path,
+                info=info,
+                report_queue=self._report_queue,
+                option=self._option)
+        self._controllers.append(controller)
+
+    def cleanup(self) -> None:
+        for controller in self._controllers[:]:
+            if controller.is_finished():
+                self._controllers.remove(controller)
+
+    def cancel(self) -> None:
+        self.cleanup()
+        for controller in self._controllers:
+            controller.cancel()
 
 
 def download(
