@@ -79,7 +79,7 @@ class Progress:
 
     def is_completed(self) -> bool:
         return (self._file_size is None
-                or self._file_size == self._downloaded_size)
+                or self._file_size <= self._downloaded_size)
 
     def report(self) -> ProgressReport:
         return ProgressReport(
