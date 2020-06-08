@@ -8,7 +8,7 @@ import threading
 from typing import NamedTuple, Optional, TypeVar, TYPE_CHECKING
 import requests
 from ... import Option, OptionList
-from ._exception import IncompleteDownloadError
+from ._exception import DownloadCancelled, IncompleteDownloadError
 from ._report import Reporter
 from ._progress import Progress, ProgressReportTimer
 if TYPE_CHECKING:
@@ -60,20 +60,46 @@ class ThreadOption(NamedTuple):
 ReportInfo = TypeVar('ReportInfo')
 
 
+class Controller:
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._is_finished = False
+        self._is_canceled = False
+
+    def finish(self) -> None:
+        with self._lock:
+            self._is_finished = True
+
+    def is_finished(self) -> bool:
+        with self._lock:
+            return self._is_finished
+
+    def cancel(self) -> None:
+        with self._lock:
+            self._is_canceled = True
+
+    def is_canceled(self) -> bool:
+        with self._lock:
+            return self._is_canceled
+
+
 def download(
         url: str,
         path: pathlib.Path,
         info: ReportInfo,
         report_queue: 'queue.Queue[Report[ReportInfo]]',
-        option: Optional[ThreadOption] = None) -> None:
+        option: Optional[ThreadOption] = None) -> Controller:
+    controller = Controller()
     thread = threading.Thread(
             target=lambda: _download(
                     url=url,
                     path=path,
                     info=info,
                     report_queue=report_queue,
-                    option=option))
+                    option=option,
+                    controller=controller))
     thread.start()
+    return controller
 
 
 def _download(
@@ -81,7 +107,9 @@ def _download(
         path: pathlib.Path,
         info: ReportInfo,
         report_queue: 'queue.Queue[Report[ReportInfo]]',
-        option: Optional[ThreadOption] = None) -> None:
+        *,
+        option: Optional[ThreadOption] = None,
+        controller: Optional[Controller] = None) -> None:
     option = option or ThreadOption.option_list(name='').parse()
     # reporter
     reporter = Reporter(
@@ -125,6 +153,9 @@ def _download(
                 progress.update(len(data))
                 if progress_timer.check():
                     reporter.progress(progress=progress.report())
+                # check if cancelled
+                if controller is not None and controller.is_canceled():
+                    raise DownloadCancelled(progress.report())
         # complete check
         if not progress.is_completed():
             raise IncompleteDownloadError(progress.report())
@@ -143,6 +174,9 @@ def _download(
         # remove temp file
         if temp_file_path is not None and temp_file_path.exists():
             temp_file_path.unlink()
+    finally:
+        if controller:
+            controller.finish()
 
 
 _move_file_lock = threading.Lock()
