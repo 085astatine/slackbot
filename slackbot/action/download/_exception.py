@@ -12,6 +12,19 @@ class DownloadException(Exception):
         return self._message
 
 
+class DownloadCancelled(DownloadException):
+    def __init__(self, progress: ProgressReport) -> None:
+        super().__init__(
+                message='download cancelled {0}B/{1}B'.format(
+                        progress.downloaded_size,
+                        progress.file_size))
+        self._progress = progress
+
+    @property
+    def progress(self) -> ProgressReport:
+        return self._progress
+
+
 class IncompleteDownloadError(DownloadException):
     def __init__(self, progress: ProgressReport) -> None:
         super().__init__(
