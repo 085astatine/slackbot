@@ -92,6 +92,7 @@ class Download(Action[DownloadOption]):
             _post_report(client, self.option, report)
 
     def stop(self) -> None:
+        self._logger.info('request cancel')
         self._download_threads.cancel()
 
     @staticmethod
@@ -105,6 +106,7 @@ class Download(Action[DownloadOption]):
                 or channel is None
                 or channel.name not in self.option.channel):
             return
+        self._logger.debug('match message: %s', data['text'].strip())
         match = self.option.pattern.match(data['text'].strip())
         if not match:
             return
