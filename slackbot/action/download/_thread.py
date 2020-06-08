@@ -60,9 +60,6 @@ class ThreadOption(NamedTuple):
 ReportInfo = TypeVar('ReportInfo')
 
 
-_move_file_lock = threading.Lock()
-
-
 def download(
         url: str,
         path: pathlib.Path,
@@ -132,14 +129,8 @@ def _download(
         if not progress.is_completed():
             raise IncompleteDownloadError(progress.report())
         # move file
-        with _move_file_lock:
-            save_path = path
-            i = 0
-            while save_path.exists():
-                save_path = path.with_name(
-                        '{0.stem}_{1}{0.suffix}'.format(path, i))
-                i += 1
-            shutil.move(temp_file_path.as_posix(), save_path.as_posix())
+        save_path = _move_file(temp_file_path, path)
+        temp_file_path = None
         # chmod
         if option.file_permission is not None:
             save_path.chmod(option.file_permission)
@@ -152,3 +143,20 @@ def _download(
         # remove temp file
         if temp_file_path is not None and temp_file_path.exists():
             temp_file_path.unlink()
+
+
+_move_file_lock = threading.Lock()
+
+
+def _move_file(
+        source: pathlib.Path,
+        destination: pathlib.Path) -> pathlib.Path:
+    with _move_file_lock:
+        path = destination
+        i = 0
+        while path.exists():
+            path = source.with_name(
+                    '{0.stem}_{1}{0.suffix}'.format(destination, i))
+            i += 1
+        shutil.move(source.as_posix(), path.as_posix())
+    return path
