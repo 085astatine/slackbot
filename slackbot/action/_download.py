@@ -76,6 +76,9 @@ class Download(Action[DownloadOption]):
                 option,
                 logger=logger or logging.getLogger(__name__))
         self._report_queue: 'queue.Queue[Report]' = queue.Queue()
+        self._download_threads = download.ThreadGenerator(
+                report_queue=self._report_queue,
+                option=self.option.thread)
 
     def register(self) -> None:
         self.register_callback(
@@ -88,6 +91,10 @@ class Download(Action[DownloadOption]):
             self._logger.debug('report: %s', report)
             _post_report(client, self.option, report)
 
+    def stop(self) -> None:
+        self._logger.info('request cancel')
+        self._download_threads.cancel()
+
     @staticmethod
     def option_list(name: str) -> OptionList['DownloadOption']:
         return DownloadOption.option_list(name)
@@ -99,6 +106,7 @@ class Download(Action[DownloadOption]):
                 or channel is None
                 or channel.name not in self.option.channel):
             return
+        self._logger.debug('match message: %s', data['text'].strip())
         match = self.option.pattern.match(data['text'].strip())
         if not match:
             return
@@ -107,79 +115,99 @@ class Download(Action[DownloadOption]):
         path = self.option.destination_directory.joinpath(name)
         self._logger.info('detect: name=\'%s\', url=\'%s\'', name, url)
         # start thread
-        thread = download.Thread(
-                info=ReportInfo(channel=channel),
-                report_queue=self._report_queue,
+        self._download_threads.start(
                 url=url,
                 path=path,
-                option=self._option.thread)
-        thread.start()
+                info=ReportInfo(channel=channel))
+
+
+def _start_message(report: Report) -> str:
+    return '[{0}]:start <{1}> (size: {2})'.format(
+                report.path.name,
+                report.final_url,
+                download.Report.format_bytes(report.progress.file_size))
+
+
+def _progress_message(report: Report) -> str:
+    message: List[str] = []
+    message.append('[{0}]:progress'.format(report.path.name))
+    if report.progress.file_size is not None:
+        progress_rate = report.progress.progress_rate
+        message.append(' {0}/{1} ({2})'.format(
+                download.Report.format_bytes(report.progress.downloaded_size),
+                download.Report.format_bytes(report.progress.file_size),
+                f'{progress_rate:.2%}'
+                if progress_rate is not None
+                else '--.--%%'))
+    else:
+        message.append(' {0}'.format(
+                download.Report.format_bytes(report.progress.downloaded_size)))
+    message.append(' {0}/s in {1}'.format(
+            download.Report.format_bytes(report.progress.speed),
+            datetime.timedelta(seconds=report.progress.elapsed_time)))
+    if report.progress.remaining_time is not None:
+        message.append(' (remaining {0})'.format(
+                datetime.timedelta(seconds=report.progress.remaining_time)))
+    return ''.join(message)
+
+
+def _finish_report(
+        report: Report,
+        least_size: Optional[int]) -> str:
+    assert report.saved_path is not None
+    message: List[str] = []
+    if report.path == report.saved_path:
+        message.append('[{0}]:finish'.format(report.path.name))
+    else:
+        message.append('[{0}]->[{1}]:finish'.format(
+                report.path.name,
+                report.saved_path.name))
+    message.append(' {0} at {1}/s in {2}'.format(
+            download.Report.format_bytes(report.progress.downloaded_size),
+            download.Report.format_bytes(report.progress.average_speed),
+            datetime.timedelta(seconds=report.progress.elapsed_time)))
+    # file size check
+    if (least_size is not None
+            and report.progress.downloaded_size < least_size):
+        message.append('\n')
+        message.append('[{0}]:delete'.format(report.saved_path.name))
+        message.append(' because the file is smaller than least size')
+        message.append(' ({0} < {1})'.format(
+                download.Report.format_bytes(report.progress.downloaded_size),
+                download.Report.format_bytes(least_size)))
+        # delete
+        report.saved_path.unlink()
+    return ''.join(message)
+
+
+def _error_report(report: Report) -> str:
+    assert report.error is not None
+    return '[{0}]:error {1} {2}'.format(
+                report.path.name,
+                report.error.__class__.__name__,
+                report.error)
 
 
 def _post_report(
         client: slack.WebClient,
         option: DownloadOption,
         report: Report) -> None:
-    format_bytes = download.Report.format_bytes
-    message: List[str] = []
+    message = ''
     # start
     if report.type is download.ReportType.START:
-        message.append('[{0}]:start <{1}> (size: {2})'.format(
-                report.path.name,
-                report.final_url,
-                format_bytes(report.progress.file_size)))
+        message = _start_message(report)
     # progress
     elif report.type is download.ReportType.PROGRESS:
-        message.append('[{0}]:progress'.format(report.path.name))
-        if report.progress.file_size is not None:
-            message.append(' {0}/{1} ({2:.2%})'.format(
-                    format_bytes(report.progress.downloaded_size),
-                    format_bytes(report.progress.file_size),
-                    report.progress.progress_rate))
-        else:
-            message.append(' {0}'.format(
-                    format_bytes(report.progress.downloaded_size)))
-        message.append(' {0}/s in {1}'.format(
-                format_bytes(report.progress.speed),
-                datetime.timedelta(seconds=report.progress.elapsed_time)))
-        if report.progress.remaining_time is not None:
-            message.append(' (remaining {0})'.format(
-                    datetime.timedelta(
-                            seconds=report.progress.remaining_time)))
+        message = _progress_message(report)
     # finish
     elif report.type is download.ReportType.FINISH:
-        assert report.saved_path is not None
-        if report.path == report.saved_path:
-            message.append('[{0}]:finish'.format(report.path.name))
-        else:
-            message.append('[{0}]->[{1}]:finish'.format(
-                    report.path.name,
-                    report.saved_path.name))
-        message.append(' {0} at {1}/s in {2}'.format(
-                    format_bytes(report.progress.downloaded_size),
-                    format_bytes(report.progress.average_speed),
-                    datetime.timedelta(seconds=report.progress.elapsed_time)))
-        # file size check
-        if (option.least_size is not None
-                and (report.progress.downloaded_size
-                     < option.least_size)):
-            message.append('\n')
-            message.append('[{0}]:delete'.format(report.saved_path.name))
-            message.append(' because the file is smaller than least size')
-            message.append(' ({0} < {1})'.format(
-                    format_bytes(report.progress.downloaded_size),
-                    format_bytes(option.least_size)))
-            report.saved_path.unlink()
+        message = _finish_report(report, option.least_size)
     # error
     elif report.type is download.ReportType.ERROR:
-        assert report.error is not None
-        message.append('[{0}]:error {1} {2}'.format(
-                report.path.name,
-                report.error.__class__.__name__,
-                report.error))
+        message = _error_report(report)
     # post message
     params = {}
-    params['text'] = ''.join(message)
+    params['text'] = message
     params.update(option.avatar.params())
     client.chat_postMessage(
             channel=report.info.channel.id,
