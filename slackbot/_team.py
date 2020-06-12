@@ -233,7 +233,7 @@ class Team:
         self._is_initialized = True
         # logging
         if logger:
-            logger.debug('begin Team.initialize()')
+            logger.debug('end Team.initialize()')
 
     def is_initialized(self) -> bool:
         return self._is_initialized

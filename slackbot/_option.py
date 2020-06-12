@@ -25,6 +25,7 @@ class InputValue(NamedTuple):
 class Option:
     def __init__(self,
                  name: str,
+                 *,
                  action: Optional[Callable[[Any], Any]] = None,
                  default: Optional[Any] = None,
                  type: Optional[Type] = None,

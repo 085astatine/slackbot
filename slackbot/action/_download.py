@@ -85,11 +85,11 @@ class Download(Action[DownloadOption]):
                 event='message',
                 callback=self._callback)
 
-    def update(self, client: slack.WebClient) -> None:
+    async def update(self, client: slack.WebClient) -> None:
         while not self._report_queue.empty():
             report = self._report_queue.get()
             self._logger.debug('report: %s', report)
-            _post_report(client, self.option, report)
+            await _post_report(client, self.option, report)
 
     def stop(self) -> None:
         self._logger.info('request cancel')
@@ -188,7 +188,7 @@ def _error_report(report: Report) -> str:
                 report.error)
 
 
-def _post_report(
+async def _post_report(
         client: slack.WebClient,
         option: DownloadOption,
         report: Report) -> None:
@@ -209,6 +209,6 @@ def _post_report(
     params = {}
     params['text'] = message
     params.update(option.avatar.params())
-    client.chat_postMessage(
+    await client.chat_postMessage(
             channel=report.info.channel.id,
             **params)
